@@ -27,7 +27,10 @@ function createMockMcp(results: Record<string, string>): McpClient {
   } as unknown as McpClient;
 }
 
-function createMockSupabase(messages: { role: string; content: string }[]) {
+function createMockSupabase(
+  messages: { role: string; content: string }[],
+  sessionTitle: string | null = null,
+) {
   return {
     from: vi.fn((table: string) => {
       if (table === "chat_messages") {
@@ -36,6 +39,18 @@ function createMockSupabase(messages: { role: string; content: string }[]) {
             eq: vi.fn(() => ({
               order: vi.fn(() => ({
                 data: messages,
+                error: null,
+              })),
+            })),
+          })),
+        };
+      }
+      if (table === "chat_sessions") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              single: vi.fn(() => ({
+                data: { title: sessionTitle },
                 error: null,
               })),
             })),
@@ -290,6 +305,97 @@ describe("processMessage (ReAct loop)", () => {
         created_by: "user-xyz",
       }),
     );
+  });
+
+  it("injects session_id into set_session_title", async () => {
+    const llm = createMockLLM([
+      {
+        content: null,
+        tool_calls: [
+          {
+            id: "call_1",
+            name: "set_session_title",
+            arguments: JSON.stringify({ title: "Roof repairs" }),
+          },
+        ],
+        finish_reason: "tool_calls",
+      },
+      { content: "Done", tool_calls: [], finish_reason: "stop" },
+    ]);
+
+    const mcp = createMockMcp({
+      set_session_title: JSON.stringify({ id: "sess-abc", title: "Roof repairs" }),
+    });
+
+    const supabase = createMockSupabase([{ role: "user", content: "Fix the roof" }]);
+
+    await processMessage({
+      sessionId: "sess-abc",
+      userId: "user-1",
+      llm,
+      mcp,
+      tools: TOOLS,
+      systemPrompt: "test",
+      supabase,
+      embedding: createMockEmbedding(),
+    });
+
+    expect(mcp.callTool).toHaveBeenCalledWith(
+      "set_session_title",
+      expect.objectContaining({
+        session_id: "sess-abc",
+        title: "Roof repairs",
+      }),
+    );
+  });
+
+  it("includes 'no title' context in system prompt when session has no title", async () => {
+    const llm = createMockLLM([
+      { content: "Hello!", tool_calls: [], finish_reason: "stop" },
+    ]);
+    const mcp = createMockMcp({});
+    const supabase = createMockSupabase([{ role: "user", content: "Hi" }], null);
+
+    await processMessage({
+      sessionId: "sess-1",
+      userId: "user-1",
+      llm,
+      mcp,
+      tools: TOOLS,
+      systemPrompt: "You are helpful.",
+      supabase,
+      embedding: createMockEmbedding(),
+    });
+
+    const systemMsg = (llm.chat as ReturnType<typeof vi.fn>).mock.calls[0][0][0];
+    expect(systemMsg.content).toContain("Session title: (none)");
+    expect(systemMsg.content).toContain("set_session_title");
+  });
+
+  it("includes existing title in system prompt and instructs not to re-set", async () => {
+    const llm = createMockLLM([
+      { content: "Hello!", tool_calls: [], finish_reason: "stop" },
+    ]);
+    const mcp = createMockMcp({});
+    const supabase = createMockSupabase(
+      [{ role: "user", content: "Hi" }],
+      "Existing Title",
+    );
+
+    await processMessage({
+      sessionId: "sess-1",
+      userId: "user-1",
+      llm,
+      mcp,
+      tools: TOOLS,
+      systemPrompt: "You are helpful.",
+      supabase,
+      embedding: createMockEmbedding(),
+    });
+
+    const systemMsg = (llm.chat as ReturnType<typeof vi.fn>).mock.calls[0][0][0];
+    expect(systemMsg.content).toContain('"Existing Title"');
+    expect(systemMsg.content).toContain("do not call `set_session_title`");
   });
 
   it("guards against infinite tool loops", async () => {

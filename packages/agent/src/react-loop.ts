@@ -16,15 +16,28 @@ export interface ProcessContext {
 }
 
 export async function processMessage(ctx: ProcessContext): Promise<string> {
-  // Load session history
-  const { data: history } = await ctx.supabase
-    .from("chat_messages")
-    .select("role, content")
-    .eq("session_id", ctx.sessionId)
-    .order("created_at", { ascending: true });
+  // Load session history and session metadata in parallel
+  const [{ data: history }, { data: session }] = await Promise.all([
+    ctx.supabase
+      .from("chat_messages")
+      .select("role, content")
+      .eq("session_id", ctx.sessionId)
+      .order("created_at", { ascending: true }),
+    ctx.supabase
+      .from("chat_sessions")
+      .select("title")
+      .eq("id", ctx.sessionId)
+      .single(),
+  ]);
+
+  // Inject session context so the LLM knows whether to set a title
+  const sessionTitle = session?.title;
+  const sessionContext = sessionTitle
+    ? `\n\n## Current session\n\nSession ID: ${ctx.sessionId}\nSession title: "${sessionTitle}"\n\nThe session already has a title — do not call \`set_session_title\`.`
+    : `\n\n## Current session\n\nSession ID: ${ctx.sessionId}\nSession title: (none)\n\nThis session has no title yet. Call \`set_session_title\` with a short, descriptive title based on the conversation content.`;
 
   const messages: LLMMessage[] = [
-    { role: "system", content: ctx.systemPrompt },
+    { role: "system", content: ctx.systemPrompt + sessionContext },
     ...(history ?? []).map((m: { role: string; content: string }) => ({
       role: m.role as "user" | "assistant",
       content: m.content,
@@ -58,6 +71,10 @@ export async function processMessage(ctx: ProcessContext): Promise<string> {
           if (!args.embedding && args.content) {
             args.embedding = await ctx.embedding.embed(args.content);
           }
+        }
+        // Inject session_id for set_session_title
+        if (tc.name === "set_session_title") {
+          args.session_id ??= ctx.sessionId;
         }
         result = await ctx.mcp.callTool(tc.name, args);
       } catch (error) {
