@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { processMessage, type ProcessContext } from "../react-loop.js";
+import { processMessage, rewriteToolsForLLM, type ProcessContext } from "../react-loop.js";
 import type { LLMProvider, LLMResponse, LLMMessage, ToolDefinition, EmbeddingProvider } from "../llm-provider.js";
 import type { McpClient } from "../mcp-client.js";
 
@@ -425,5 +425,142 @@ describe("processMessage (ReAct loop)", () => {
 
     expect(result).toContain("stuck in a processing loop");
     expect(llm.chat).toHaveBeenCalledTimes(10);
+  });
+
+  it("injects embedding for search_thoughts and removes query param", async () => {
+    const embeddingProvider = createMockEmbedding();
+    const llm = createMockLLM([
+      {
+        content: null,
+        tool_calls: [
+          {
+            id: "call_1",
+            name: "search_thoughts",
+            arguments: JSON.stringify({ query: "car maintenance" }),
+          },
+        ],
+        finish_reason: "tool_calls",
+      },
+      {
+        content: "I found some thoughts about car maintenance.",
+        tool_calls: [],
+        finish_reason: "stop",
+      },
+    ]);
+
+    const mcp = createMockMcp({
+      search_thoughts: JSON.stringify([
+        { id: "t-1", content: "Oil change due in March", similarity: 0.87 },
+      ]),
+    });
+
+    const supabase = createMockSupabase([
+      { role: "user", content: "What did I say about the car?" },
+    ]);
+
+    const result = await processMessage({
+      sessionId: "sess-1",
+      userId: "user-1",
+      llm,
+      mcp,
+      tools: TOOLS,
+      systemPrompt: "You are helpful.",
+      supabase,
+      embedding: embeddingProvider,
+    });
+
+    expect(result).toBe("I found some thoughts about car maintenance.");
+    expect(embeddingProvider.embed).toHaveBeenCalledWith("car maintenance");
+    expect(mcp.callTool).toHaveBeenCalledWith(
+      "search_thoughts",
+      expect.objectContaining({
+        embedding: expect.any(Array),
+      }),
+    );
+    // query param should be removed before calling MCP
+    const callArgs = (mcp.callTool as ReturnType<typeof vi.fn>).mock.calls[0][1];
+    expect(callArgs.query).toBeUndefined();
+  });
+
+  it("passes through match_threshold and match_count for search_thoughts", async () => {
+    const llm = createMockLLM([
+      {
+        content: null,
+        tool_calls: [
+          {
+            id: "call_1",
+            name: "search_thoughts",
+            arguments: JSON.stringify({
+              query: "business ideas",
+              match_threshold: 0.7,
+              match_count: 5,
+            }),
+          },
+        ],
+        finish_reason: "tool_calls",
+      },
+      { content: "Here's what I found.", tool_calls: [], finish_reason: "stop" },
+    ]);
+
+    const mcp = createMockMcp({ search_thoughts: "[]" });
+    const supabase = createMockSupabase([{ role: "user", content: "test" }]);
+
+    await processMessage({
+      sessionId: "sess-1",
+      userId: "user-1",
+      llm,
+      mcp,
+      tools: TOOLS,
+      systemPrompt: "test",
+      supabase,
+      embedding: createMockEmbedding(),
+    });
+
+    expect(mcp.callTool).toHaveBeenCalledWith(
+      "search_thoughts",
+      expect.objectContaining({
+        embedding: expect.any(Array),
+        match_threshold: 0.7,
+        match_count: 5,
+      }),
+    );
+  });
+});
+
+describe("rewriteToolsForLLM", () => {
+  it("replaces search_thoughts embedding param with query param", () => {
+    const mcpTools: ToolDefinition[] = [
+      {
+        name: "search_thoughts",
+        description: "Search thoughts by semantic similarity using a pre-computed embedding vector.",
+        parameters: {
+          type: "object",
+          properties: {
+            embedding: { type: "array", items: { type: "number" } },
+            match_threshold: { type: "number" },
+            match_count: { type: "number" },
+          },
+          required: ["embedding"],
+        },
+      },
+      {
+        name: "capture_thought",
+        description: "Create a thought",
+        parameters: { type: "object", properties: { content: { type: "string" } } },
+      },
+    ];
+
+    const rewritten = rewriteToolsForLLM(mcpTools);
+
+    // search_thoughts should have query instead of embedding
+    const searchTool = rewritten.find((t) => t.name === "search_thoughts")!;
+    const props = (searchTool.parameters as Record<string, unknown>).properties as Record<string, unknown>;
+    expect(props.query).toBeDefined();
+    expect(props.embedding).toBeUndefined();
+    expect(((searchTool.parameters as Record<string, unknown>).required as string[])).toContain("query");
+
+    // Other tools should be unchanged
+    const captureTool = rewritten.find((t) => t.name === "capture_thought")!;
+    expect(captureTool).toEqual(mcpTools[1]);
   });
 });

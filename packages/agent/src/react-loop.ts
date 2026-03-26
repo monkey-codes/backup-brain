@@ -4,6 +4,42 @@ import type { McpClient } from "./mcp-client.js";
 
 const MAX_TOOL_ROUNDS = 10;
 
+/**
+ * Rewrite tool schemas for LLM consumption.
+ * The MCP server's `search_thoughts` expects a raw embedding vector,
+ * but the LLM should provide a natural-language query instead.
+ */
+export function rewriteToolsForLLM(tools: ToolDefinition[]): ToolDefinition[] {
+  return tools.map((t) => {
+    if (t.name === "search_thoughts") {
+      return {
+        name: t.name,
+        description:
+          "Search thoughts by semantic similarity. Provide a natural-language query describing what to find.",
+        parameters: {
+          type: "object",
+          properties: {
+            query: {
+              type: "string",
+              description: "Natural-language search query",
+            },
+            match_threshold: {
+              type: "number",
+              description: "Minimum similarity threshold (0-1, default 0.5)",
+            },
+            match_count: {
+              type: "number",
+              description: "Maximum results to return (1-50, default 10)",
+            },
+          },
+          required: ["query"],
+        },
+      };
+    }
+    return t;
+  });
+}
+
 export interface ProcessContext {
   sessionId: string;
   userId: string;
@@ -44,9 +80,12 @@ export async function processMessage(ctx: ProcessContext): Promise<string> {
     })),
   ];
 
+  // Rewrite tool schemas so the LLM sees query-based search instead of raw embeddings
+  const llmTools = rewriteToolsForLLM(ctx.tools);
+
   // ReAct loop: LLM may call tools multiple times before producing a final response
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-    const response = await ctx.llm.chat(messages, ctx.tools);
+    const response = await ctx.llm.chat(messages, llmTools);
 
     if (response.finish_reason === "stop" || response.tool_calls.length === 0) {
       return response.content ?? "";
@@ -70,6 +109,14 @@ export async function processMessage(ctx: ProcessContext): Promise<string> {
           args.created_by ??= ctx.userId;
           if (!args.embedding && args.content) {
             args.embedding = await ctx.embedding.embed(args.content);
+          }
+        }
+        // Inject embedding for search_thoughts — LLM provides a query string,
+        // system converts it to a vector before calling the MCP tool
+        if (tc.name === "search_thoughts") {
+          if (!args.embedding && args.query) {
+            args.embedding = await ctx.embedding.embed(args.query);
+            delete args.query;
           }
         }
         // Inject session_id for set_session_title
