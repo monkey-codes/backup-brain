@@ -21,7 +21,11 @@ function createMockLLM(responses: LLMResponse[]): LLMProvider {
 
 function createMockMcp(results: Record<string, string>): McpClient {
   return {
-    callTool: vi.fn(async (name: string) => results[name] ?? "{}"),
+    callTool: vi.fn(async (name: string, args?: Record<string, unknown>) => {
+      // Default list_decisions to empty array to avoid breaking existing tests
+      if (name === "list_decisions" && !results[name]) return "[]";
+      return results[name] ?? "{}";
+    }),
     listTools: vi.fn(async () => []),
     initialize: vi.fn(async () => {}),
   } as unknown as McpClient;
@@ -106,7 +110,9 @@ describe("processMessage (ReAct loop)", () => {
 
     expect(result).toBe("Hello! How can I help?");
     expect(llm.chat).toHaveBeenCalledTimes(1);
-    expect(mcp.callTool).not.toHaveBeenCalled();
+    // Only list_decisions is called (for corrections fetch), no user-triggered tool calls
+    expect(mcp.callTool).toHaveBeenCalledTimes(1);
+    expect(mcp.callTool).toHaveBeenCalledWith("list_decisions", { review_status: "corrected", limit: 50 });
   });
 
   it("executes tool calls and returns final response", async () => {
@@ -214,7 +220,8 @@ describe("processMessage (ReAct loop)", () => {
     });
 
     expect(result).toBe("All done!");
-    expect(mcp.callTool).toHaveBeenCalledTimes(2);
+    // 3 calls: list_decisions (corrections) + capture_thought + set_session_title
+    expect(mcp.callTool).toHaveBeenCalledTimes(3);
   });
 
   it("handles tool errors gracefully", async () => {
@@ -524,6 +531,168 @@ describe("processMessage (ReAct loop)", () => {
         match_count: 5,
       }),
     );
+  });
+});
+
+describe("learning from corrections", () => {
+  it("fetches past corrections and includes them in the system prompt", async () => {
+    const corrections = [
+      {
+        id: "d-1",
+        decision_type: "classification",
+        value: { category: "Business Ideas" },
+        corrected_value: { category: "Home Maintenance" },
+        reasoning: "Seemed like a business idea",
+        review_status: "corrected",
+      },
+      {
+        id: "d-2",
+        decision_type: "tag",
+        value: { label: "urgent" },
+        corrected_value: { label: "low-priority" },
+        reasoning: "Sounded time-sensitive",
+        review_status: "corrected",
+      },
+    ];
+
+    const mcp = createMockMcp({
+      list_decisions: JSON.stringify(corrections),
+    });
+
+    const llm = createMockLLM([
+      { content: "Got it!", tool_calls: [], finish_reason: "stop" },
+    ]);
+
+    const supabase = createMockSupabase([{ role: "user", content: "Fix the fence" }]);
+
+    await processMessage({
+      sessionId: "sess-1",
+      userId: "user-1",
+      llm,
+      mcp,
+      tools: TOOLS,
+      systemPrompt: "You are helpful.",
+      supabase,
+      embedding: createMockEmbedding(),
+    });
+
+    // Verify list_decisions was called with corrected filter
+    expect(mcp.callTool).toHaveBeenCalledWith(
+      "list_decisions",
+      { review_status: "corrected", limit: 50 },
+    );
+
+    // Verify corrections appear in the system prompt
+    const systemMsg = (llm.chat as ReturnType<typeof vi.fn>).mock.calls[0][0][0];
+    expect(systemMsg.content).toContain("Past corrections");
+    expect(systemMsg.content).toContain("Business Ideas");
+    expect(systemMsg.content).toContain("Home Maintenance");
+    expect(systemMsg.content).toContain("[classification]");
+    expect(systemMsg.content).toContain("[tag]");
+    expect(systemMsg.content).toContain("low-priority");
+  });
+
+  it("proceeds normally when no corrections exist", async () => {
+    const mcp = createMockMcp({
+      list_decisions: "[]",
+    });
+
+    const llm = createMockLLM([
+      { content: "Hello!", tool_calls: [], finish_reason: "stop" },
+    ]);
+
+    const supabase = createMockSupabase([{ role: "user", content: "Hi" }]);
+
+    await processMessage({
+      sessionId: "sess-1",
+      userId: "user-1",
+      llm,
+      mcp,
+      tools: TOOLS,
+      systemPrompt: "You are helpful.",
+      supabase,
+      embedding: createMockEmbedding(),
+    });
+
+    const systemMsg = (llm.chat as ReturnType<typeof vi.fn>).mock.calls[0][0][0];
+    expect(systemMsg.content).not.toContain("Past corrections");
+  });
+
+  it("proceeds normally when list_decisions call fails", async () => {
+    const mcp = createMockMcp({});
+    (mcp.callTool as ReturnType<typeof vi.fn>).mockImplementation(
+      async (name: string) => {
+        if (name === "list_decisions") throw new Error("MCP unavailable");
+        return "{}";
+      },
+    );
+
+    const llm = createMockLLM([
+      { content: "Hello!", tool_calls: [], finish_reason: "stop" },
+    ]);
+
+    const supabase = createMockSupabase([{ role: "user", content: "Hi" }]);
+
+    const result = await processMessage({
+      sessionId: "sess-1",
+      userId: "user-1",
+      llm,
+      mcp,
+      tools: TOOLS,
+      systemPrompt: "You are helpful.",
+      supabase,
+      embedding: createMockEmbedding(),
+    });
+
+    // Should still work — corrections are optional
+    expect(result).toBe("Hello!");
+    const systemMsg = (llm.chat as ReturnType<typeof vi.fn>).mock.calls[0][0][0];
+    expect(systemMsg.content).not.toContain("Past corrections");
+  });
+
+  it("includes corrections before session context in system prompt", async () => {
+    const corrections = [
+      {
+        id: "d-1",
+        decision_type: "classification",
+        value: { category: "Vehicles" },
+        corrected_value: { category: "Home Maintenance" },
+        reasoning: "Looked vehicle-related",
+        review_status: "corrected",
+      },
+    ];
+
+    const mcp = createMockMcp({
+      list_decisions: JSON.stringify(corrections),
+    });
+
+    const llm = createMockLLM([
+      { content: "OK!", tool_calls: [], finish_reason: "stop" },
+    ]);
+
+    const supabase = createMockSupabase(
+      [{ role: "user", content: "test" }],
+      "My Session",
+    );
+
+    await processMessage({
+      sessionId: "sess-1",
+      userId: "user-1",
+      llm,
+      mcp,
+      tools: TOOLS,
+      systemPrompt: "You are helpful.",
+      supabase,
+      embedding: createMockEmbedding(),
+    });
+
+    const systemMsg = (llm.chat as ReturnType<typeof vi.fn>).mock.calls[0][0][0];
+    const correctionsIdx = systemMsg.content.indexOf("Past corrections");
+    const sessionIdx = systemMsg.content.indexOf("Current session");
+    expect(correctionsIdx).toBeGreaterThan(-1);
+    expect(sessionIdx).toBeGreaterThan(-1);
+    // Corrections should appear before session context
+    expect(correctionsIdx).toBeLessThan(sessionIdx);
   });
 });
 

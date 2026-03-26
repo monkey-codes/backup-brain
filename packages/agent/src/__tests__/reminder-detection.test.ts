@@ -26,10 +26,22 @@ function createMockLLM(responses: LLMResponse[]): LLMProvider {
 
 function createMockMcp(results: Record<string, string>): McpClient {
   return {
-    callTool: vi.fn(async (name: string) => results[name] ?? "{}"),
+    callTool: vi.fn(async (name: string) => {
+      if (name === "list_decisions" && !results[name]) return "[]";
+      return results[name] ?? "{}";
+    }),
     listTools: vi.fn(async () => []),
     initialize: vi.fn(async () => {}),
   } as unknown as McpClient;
+}
+
+/** Filter mcp.callTool mock calls, excluding internal list_decisions calls */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getToolCalls(mcp: McpClient): any[][] {
+  return (mcp.callTool as ReturnType<typeof vi.fn>).mock.calls.filter(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (c: any[]) => c[0] !== "list_decisions",
+  );
 }
 
 function createMockEmbedding(): EmbeddingProvider {
@@ -181,7 +193,7 @@ describe("Reminder detection", () => {
     expect(result).toContain("tax return");
 
     // Verify capture_thought was called with a reminder decision
-    const callArgs = (mcp.callTool as ReturnType<typeof vi.fn>).mock.calls[0];
+    const callArgs = getToolCalls(mcp)[0];
     expect(callArgs[0]).toBe("capture_thought");
 
     const decisions = callArgs[1].decisions;
@@ -249,7 +261,7 @@ describe("Reminder detection", () => {
 
     await processMessage(buildContext({ llm, mcp }));
 
-    const callArgs = (mcp.callTool as ReturnType<typeof vi.fn>).mock.calls[0];
+    const callArgs = getToolCalls(mcp)[0];
     const decisions = callArgs[1].decisions;
     const reminder = decisions.find(
       (d: { decision_type: string }) => d.decision_type === "reminder",
@@ -311,7 +323,7 @@ describe("Reminder detection", () => {
 
     expect(result).toContain("plumber");
 
-    const callArgs = (mcp.callTool as ReturnType<typeof vi.fn>).mock.calls[0];
+    const callArgs = getToolCalls(mcp)[0];
     const decisions = callArgs[1].decisions;
     const reminder = decisions.find(
       (d: { decision_type: string }) => d.decision_type === "reminder",
@@ -398,7 +410,7 @@ describe("Reminder detection", () => {
 
     await processMessage(buildContext({ llm, mcp }));
 
-    const callArgs = (mcp.callTool as ReturnType<typeof vi.fn>).mock.calls[0];
+    const callArgs = getToolCalls(mcp)[0];
     const decisions = callArgs[1].decisions;
 
     // Verify all decision types present

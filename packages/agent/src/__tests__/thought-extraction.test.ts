@@ -27,10 +27,22 @@ function createMockLLM(responses: LLMResponse[]): LLMProvider {
 
 function createMockMcp(results: Record<string, string>): McpClient {
   return {
-    callTool: vi.fn(async (name: string) => results[name] ?? "{}"),
+    callTool: vi.fn(async (name: string) => {
+      if (name === "list_decisions" && !results[name]) return "[]";
+      return results[name] ?? "{}";
+    }),
     listTools: vi.fn(async () => []),
     initialize: vi.fn(async () => {}),
   } as unknown as McpClient;
+}
+
+/** Filter mcp.callTool mock calls, excluding internal list_decisions calls */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getToolCalls(mcp: McpClient): any[][] {
+  return (mcp.callTool as ReturnType<typeof vi.fn>).mock.calls.filter(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (c: any[]) => c[0] !== "list_decisions",
+  );
 }
 
 function createMockEmbedding(): EmbeddingProvider {
@@ -296,7 +308,8 @@ describe("Thought extraction, classification & tagging", () => {
     );
 
     // Verify all 7 decisions were passed through
-    const callArgs = (mcp.callTool as ReturnType<typeof vi.fn>).mock.calls[0];
+    const toolCalls = getToolCalls(mcp);
+    const callArgs = toolCalls[0];
     expect(callArgs[0]).toBe("capture_thought");
     const passedDecisions = callArgs[1].decisions;
     expect(passedDecisions).toHaveLength(7);
@@ -405,8 +418,8 @@ describe("Thought extraction, classification & tagging", () => {
 
     await processMessage(buildContext({ llm, mcp }));
 
-    const callArgs = (mcp.callTool as ReturnType<typeof vi.fn>).mock.calls[0];
-    const classification = callArgs[1].decisions[0];
+    const toolCalls = getToolCalls(mcp);
+    const classification = toolCalls[0][1].decisions[0];
     expect(classification.decision_type).toBe("classification");
     expect(classification.value.category).toBe("Food & Dining");
   });
@@ -535,11 +548,11 @@ describe("Thought extraction, classification & tagging", () => {
     const result = await processMessage(buildContext({ llm, mcp }));
 
     expect(result).toContain("oil change");
-    expect(mcp.callTool).toHaveBeenCalledTimes(2);
+    const toolCalls = getToolCalls(mcp);
+    expect(toolCalls).toHaveLength(2);
 
-    const calls = (mcp.callTool as ReturnType<typeof vi.fn>).mock.calls;
-    expect(calls[0][0]).toBe("capture_thought");
-    expect(calls[1][0]).toBe("create_decision");
-    expect(calls[1][1].thought_id).toBe("t-5");
+    expect(toolCalls[0][0]).toBe("capture_thought");
+    expect(toolCalls[1][0]).toBe("create_decision");
+    expect(toolCalls[1][1].thought_id).toBe("t-5");
   });
 });

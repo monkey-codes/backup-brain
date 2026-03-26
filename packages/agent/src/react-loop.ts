@@ -52,8 +52,8 @@ export interface ProcessContext {
 }
 
 export async function processMessage(ctx: ProcessContext): Promise<string> {
-  // Load session history and session metadata in parallel
-  const [{ data: history }, { data: session }] = await Promise.all([
+  // Load session history, session metadata, and past corrections in parallel
+  const [{ data: history }, { data: session }, correctionsResult] = await Promise.all([
     ctx.supabase
       .from("chat_messages")
       .select("role, content")
@@ -64,7 +64,22 @@ export async function processMessage(ctx: ProcessContext): Promise<string> {
       .select("title")
       .eq("id", ctx.sessionId)
       .single(),
+    ctx.mcp.callTool("list_decisions", { review_status: "corrected", limit: 50 }).catch(() => "[]"),
   ]);
+
+  // Build corrections context from past user corrections
+  let correctionsContext = "";
+  try {
+    const corrections = JSON.parse(correctionsResult);
+    if (Array.isArray(corrections) && corrections.length > 0) {
+      const formatted = corrections.map((c: Record<string, unknown>) =>
+        `- [${c.decision_type}] Original: ${JSON.stringify(c.value)} → Corrected: ${JSON.stringify(c.corrected_value)} (reasoning was: "${c.reasoning}")`
+      ).join("\n");
+      correctionsContext = `\n\n## Past corrections\n\nThe following decisions were corrected by the user. Learn from these to avoid repeating the same mistakes:\n\n${formatted}`;
+    }
+  } catch {
+    // If parsing fails, proceed without corrections
+  }
 
   // Inject session context so the LLM knows whether to set a title
   const sessionTitle = session?.title;
@@ -73,7 +88,7 @@ export async function processMessage(ctx: ProcessContext): Promise<string> {
     : `\n\n## Current session\n\nSession ID: ${ctx.sessionId}\nSession title: (none)\n\nThis session has no title yet. Call \`set_session_title\` with a short, descriptive title based on the conversation content.`;
 
   const messages: LLMMessage[] = [
-    { role: "system", content: ctx.systemPrompt + sessionContext },
+    { role: "system", content: ctx.systemPrompt + correctionsContext + sessionContext },
     ...(history ?? []).map((m: { role: string; content: string }) => ({
       role: m.role as "user" | "assistant",
       content: m.content,
