@@ -11,6 +11,48 @@ const MAX_TOOL_ROUNDS = 10;
  */
 export function rewriteToolsForLLM(tools: ToolDefinition[]): ToolDefinition[] {
   return tools.map((t) => {
+    if (t.name === "capture_thought") {
+      // Hide embedding, session_id, and created_by — the agent injects these automatically.
+      // Provide a clear decisions schema so the LLM always includes the required `value` field.
+      return {
+        name: t.name,
+        description: t.description,
+        parameters: {
+          type: "object",
+          properties: {
+            content: {
+              type: "string",
+              description: "The synthesized thought content",
+            },
+            decisions: {
+              type: "array",
+              description: "Decisions to attach to the thought",
+              items: {
+                type: "object",
+                properties: {
+                  decision_type: {
+                    type: "string",
+                    enum: ["classification", "entity", "reminder", "tag"],
+                  },
+                  value: {
+                    type: "object",
+                    description:
+                      'Decision payload. For classification: {"category": "..."}, ' +
+                      'for entity: {"name": "...", "type": "..."}, ' +
+                      'for reminder: {"due_at": "ISO date", "message": "..."}, ' +
+                      'for tag: {"tag": "..."}',
+                  },
+                  confidence: { type: "number", description: "0-1" },
+                  reasoning: { type: "string" },
+                },
+                required: ["decision_type", "value", "confidence", "reasoning"],
+              },
+            },
+          },
+          required: ["content", "decisions"],
+        },
+      };
+    }
     if (t.name === "search_thoughts") {
       return {
         name: t.name,
@@ -33,6 +75,23 @@ export function rewriteToolsForLLM(tools: ToolDefinition[]): ToolDefinition[] {
             },
           },
           required: ["query"],
+        },
+      };
+    }
+    if (t.name === "set_session_title") {
+      // Hide session_id — the agent injects it automatically.
+      return {
+        name: t.name,
+        description: t.description,
+        parameters: {
+          type: "object",
+          properties: {
+            title: {
+              type: "string",
+              description: "Short, descriptive title for the chat session",
+            },
+          },
+          required: ["title"],
         },
       };
     }
@@ -118,11 +177,12 @@ export async function processMessage(ctx: ProcessContext): Promise<string> {
       let result: string;
       try {
         const args = JSON.parse(tc.arguments);
-        // Inject session_id, created_by, and embedding for capture_thought
+        // Inject session_id, created_by, and embedding for capture_thought.
+        // Always force-set these — the LLM may hallucinate invalid values.
         if (tc.name === "capture_thought") {
-          args.session_id ??= ctx.sessionId;
-          args.created_by ??= ctx.userId;
-          if (!args.embedding && args.content) {
+          args.session_id = ctx.sessionId;
+          args.created_by = ctx.userId;
+          if (args.content) {
             args.embedding = await ctx.embedding.embed(args.content);
           }
         }
@@ -134,9 +194,9 @@ export async function processMessage(ctx: ProcessContext): Promise<string> {
             delete args.query;
           }
         }
-        // Inject session_id for set_session_title
+        // Inject session_id for set_session_title — always force-set
         if (tc.name === "set_session_title") {
-          args.session_id ??= ctx.sessionId;
+          args.session_id = ctx.sessionId;
         }
         result = await ctx.mcp.callTool(tc.name, args);
       } catch (error) {

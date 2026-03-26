@@ -728,8 +728,19 @@ describe("rewriteToolsForLLM", () => {
     expect(props.embedding).toBeUndefined();
     expect(((searchTool.parameters as Record<string, unknown>).required as string[])).toContain("query");
 
-    // Other tools should be unchanged
+    // capture_thought should be rewritten to hide embedding/session_id/created_by
     const captureTool = rewritten.find((t) => t.name === "capture_thought")!;
-    expect(captureTool).toEqual(mcpTools[1]);
+    const captureProps = (captureTool.parameters as Record<string, unknown>).properties as Record<string, unknown>;
+    expect(captureProps.content).toBeDefined();
+    expect(captureProps.decisions).toBeDefined();
+    expect(captureProps.embedding).toBeUndefined();
+    expect(captureProps.session_id).toBeUndefined();
+    expect(captureProps.created_by).toBeUndefined();
+
+    // Non-rewritten tools should pass through as-is
+    const otherTools = rewritten.filter(
+      (t) => !["search_thoughts", "capture_thought", "set_session_title"].includes(t.name),
+    );
+    expect(otherTools).toHaveLength(0); // Only search_thoughts and capture_thought in fixture
   });
 });
