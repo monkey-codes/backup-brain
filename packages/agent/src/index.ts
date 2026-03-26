@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createServer } from "node:http";
-import { OpenAIProvider } from "./llm-provider.js";
+import { OpenAIProvider, OpenAIEmbeddingProvider } from "./llm-provider.js";
 import { McpClient } from "./mcp-client.js";
 import { SessionLock } from "./session-lock.js";
 import { processMessage } from "./react-loop.js";
@@ -27,6 +27,7 @@ const systemPrompt = readFileSync(resolve(__dirname, "../prompts/system.md"), "u
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 const llm = new OpenAIProvider(OPENAI_API_KEY);
+const embedding = new OpenAIEmbeddingProvider(OPENAI_API_KEY);
 const mcp = new McpClient(MCP_URL);
 const sessionLock = new SessionLock();
 
@@ -46,6 +47,7 @@ async function handleUserMessage(sessionId: string, userId: string): Promise<voi
       tools,
       systemPrompt,
       supabase,
+      embedding,
     });
 
     await supabase.from("chat_messages").insert({
@@ -67,6 +69,7 @@ async function handleUserMessage(sessionId: string, userId: string): Promise<voi
         tools,
         systemPrompt,
         supabase,
+        embedding,
       });
 
       await supabase.from("chat_messages").insert({

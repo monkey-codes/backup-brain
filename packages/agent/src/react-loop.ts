@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { LLMProvider, LLMMessage, ToolDefinition } from "./llm-provider.js";
+import type { LLMProvider, LLMMessage, ToolDefinition, EmbeddingProvider } from "./llm-provider.js";
 import type { McpClient } from "./mcp-client.js";
 
 const MAX_TOOL_ROUNDS = 10;
@@ -12,6 +12,7 @@ export interface ProcessContext {
   tools: ToolDefinition[];
   systemPrompt: string;
   supabase: SupabaseClient;
+  embedding: EmbeddingProvider;
 }
 
 export async function processMessage(ctx: ProcessContext): Promise<string> {
@@ -50,10 +51,13 @@ export async function processMessage(ctx: ProcessContext): Promise<string> {
       let result: string;
       try {
         const args = JSON.parse(tc.arguments);
-        // Inject session_id and created_by for capture_thought if not provided
+        // Inject session_id, created_by, and embedding for capture_thought
         if (tc.name === "capture_thought") {
           args.session_id ??= ctx.sessionId;
           args.created_by ??= ctx.userId;
+          if (!args.embedding && args.content) {
+            args.embedding = await ctx.embedding.embed(args.content);
+          }
         }
         result = await ctx.mcp.callTool(tc.name, args);
       } catch (error) {

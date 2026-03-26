@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { processMessage, type ProcessContext } from "../react-loop.js";
-import type { LLMProvider, LLMResponse, LLMMessage, ToolDefinition } from "../llm-provider.js";
+import type { LLMProvider, LLMResponse, LLMMessage, ToolDefinition, EmbeddingProvider } from "../llm-provider.js";
 import type { McpClient } from "../mcp-client.js";
 
 // ---------------------------------------------------------------------------
@@ -47,6 +47,12 @@ function createMockSupabase(messages: { role: string; content: string }[]) {
   } as unknown as ProcessContext["supabase"];
 }
 
+function createMockEmbedding(): EmbeddingProvider {
+  return {
+    embed: vi.fn(async () => new Array(1536).fill(0.1)),
+  };
+}
+
 const TOOLS: ToolDefinition[] = [
   {
     name: "capture_thought",
@@ -80,6 +86,7 @@ describe("processMessage (ReAct loop)", () => {
       tools: TOOLS,
       systemPrompt: "You are helpful.",
       supabase,
+      embedding: createMockEmbedding(),
     });
 
     expect(result).toBe("Hello! How can I help?");
@@ -125,15 +132,20 @@ describe("processMessage (ReAct loop)", () => {
       tools: TOOLS,
       systemPrompt: "You are helpful.",
       supabase,
+      embedding: createMockEmbedding(),
     });
 
     expect(result).toBe("Got it! I've captured your thought about fixing the roof.");
     expect(llm.chat).toHaveBeenCalledTimes(2);
-    expect(mcp.callTool).toHaveBeenCalledWith("capture_thought", {
-      content: "User wants to fix the roof",
-      session_id: "sess-1",
-      created_by: "user-1",
-    });
+    expect(mcp.callTool).toHaveBeenCalledWith(
+      "capture_thought",
+      expect.objectContaining({
+        content: "User wants to fix the roof",
+        session_id: "sess-1",
+        created_by: "user-1",
+        embedding: expect.any(Array),
+      }),
+    );
   });
 
   it("handles multiple tool calls in sequence", async () => {
@@ -183,6 +195,7 @@ describe("processMessage (ReAct loop)", () => {
       tools: TOOLS,
       systemPrompt: "You are helpful.",
       supabase,
+      embedding: createMockEmbedding(),
     });
 
     expect(result).toBe("All done!");
@@ -220,6 +233,7 @@ describe("processMessage (ReAct loop)", () => {
       tools: TOOLS,
       systemPrompt: "You are helpful.",
       supabase,
+      embedding: createMockEmbedding(),
     });
 
     expect(result).toBe("Sorry, there was an issue saving that.");
@@ -266,6 +280,7 @@ describe("processMessage (ReAct loop)", () => {
       tools: TOOLS,
       systemPrompt: "test",
       supabase,
+      embedding: createMockEmbedding(),
     });
 
     expect(mcp.callTool).toHaveBeenCalledWith(
@@ -299,6 +314,7 @@ describe("processMessage (ReAct loop)", () => {
       tools: TOOLS,
       systemPrompt: "test",
       supabase,
+      embedding: createMockEmbedding(),
     });
 
     expect(result).toContain("stuck in a processing loop");

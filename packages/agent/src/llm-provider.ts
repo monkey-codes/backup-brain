@@ -33,6 +33,10 @@ export interface LLMProvider {
   chat(messages: LLMMessage[], tools: ToolDefinition[]): Promise<LLMResponse>;
 }
 
+export interface EmbeddingProvider {
+  embed(text: string): Promise<number[]>;
+}
+
 // ---------------------------------------------------------------------------
 // OpenAI implementation
 // ---------------------------------------------------------------------------
@@ -100,5 +104,27 @@ export class OpenAIProvider implements LLMProvider {
       tool_calls: toolCalls,
       finish_reason: choice.finish_reason === "tool_calls" ? "tool_calls" : "stop",
     };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// OpenAI embedding implementation
+// ---------------------------------------------------------------------------
+
+export class OpenAIEmbeddingProvider implements EmbeddingProvider {
+  private client: OpenAI;
+  private model: string;
+
+  constructor(apiKey: string, model = "text-embedding-3-small") {
+    this.client = new OpenAI({ apiKey });
+    this.model = model;
+  }
+
+  async embed(text: string): Promise<number[]> {
+    const response = await this.client.embeddings.create({
+      model: this.model,
+      input: text,
+    });
+    return response.data[0].embedding;
   }
 }
