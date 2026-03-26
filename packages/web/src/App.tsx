@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/hooks/use-auth";
+import { SessionProvider } from "@/hooks/use-sessions";
 import { ProtectedRoute } from "@/components/protected-route";
 import { LoginView } from "@/views/login";
 import { ChatShell } from "@/views/chat-shell";
@@ -27,7 +28,9 @@ export function AppRoutes() {
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>{children}</AuthProvider>
+      <AuthProvider>
+        <SessionProvider>{children}</SessionProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

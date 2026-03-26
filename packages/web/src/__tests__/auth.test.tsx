@@ -18,10 +18,17 @@ vi.mock("@/lib/supabase", () => ({
       signInWithPassword: (creds: unknown) => mockSignInWithPassword(creds),
       signOut: () => mockSignOut(),
     },
+    from: () => ({
+      select: () => ({
+        order: () => Promise.resolve({ data: [], error: null }),
+      }),
+      insert: vi.fn(),
+    }),
   },
 }));
 
 import { AuthProvider } from "../hooks/use-auth";
+import { SessionProvider } from "../hooks/use-sessions";
 import { AppRoutes } from "../App";
 
 function setupAuthMock(session: unknown = null) {
@@ -38,9 +45,11 @@ function renderApp(initialRoute = "/") {
   return render(
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <MemoryRouter initialEntries={[initialRoute]}>
-          <AppRoutes />
-        </MemoryRouter>
+        <SessionProvider>
+          <MemoryRouter initialEntries={[initialRoute]}>
+            <AppRoutes />
+          </MemoryRouter>
+        </SessionProvider>
       </AuthProvider>
     </QueryClientProvider>,
   );
