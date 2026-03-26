@@ -55,6 +55,18 @@ function createMockSupabase(messages: { role: string; content: string }[]) {
           })),
         };
       }
+      if (table === "chat_sessions") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              single: vi.fn(() => ({
+                data: { title: null },
+                error: null,
+              })),
+            })),
+          })),
+        };
+      }
       return { select: vi.fn() };
     }),
   } as unknown as ProcessContext["supabase"];
