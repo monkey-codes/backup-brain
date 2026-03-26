@@ -1,0 +1,38 @@
+version: "3"
+
+tasks:
+  install:
+    desc: Install all dependencies
+    cmds:
+      - pnpm install
+
+  build:
+    desc: Build all packages
+    cmds:
+      - pnpm -r run typecheck
+
+  dev:
+    desc: Start development servers
+    deps: [dev:web, dev:agent]
+
+  dev:web:
+    desc: Start web dev server
+    dir: packages/web
+    cmds:
+      - pnpm run dev
+
+  dev:agent:
+    desc: Start agent in watch mode
+    dir: packages/agent
+    cmds:
+      - pnpm run dev
+
+  lint:
+    desc: Lint all packages
+    cmds:
+      - pnpm -r run lint
+
+  typecheck:
+    desc: Type-check all packages
+    cmds:
+      - pnpm -r run typecheck
