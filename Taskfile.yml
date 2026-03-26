@@ -48,6 +48,12 @@ tasks:
     cmds:
       - pnpm run test
 
+  test:web:
+    desc: Run web app component tests
+    dir: packages/web
+    cmds:
+      - pnpm run test
+
   test:mcp:
     desc: Run MCP server integration tests (requires supabase start + functions serve)
     dir: supabase/functions
