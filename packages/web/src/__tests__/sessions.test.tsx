@@ -11,6 +11,12 @@ const mockSelect = vi.fn();
 const mockOrder = vi.fn();
 const mockSingle = vi.fn();
 
+const mockChannelObj = {
+  on: vi.fn().mockReturnThis(),
+  subscribe: vi.fn().mockReturnThis(),
+  unsubscribe: vi.fn(),
+};
+
 vi.mock("@/lib/supabase", () => ({
   supabase: {
     auth: {
@@ -29,6 +35,8 @@ vi.mock("@/lib/supabase", () => ({
       signOut: vi.fn(),
     },
     from: (...args: unknown[]) => mockFrom(...args),
+    channel: () => mockChannelObj,
+    removeChannel: vi.fn(),
   },
 }));
 
@@ -63,9 +71,17 @@ const MOCK_SESSIONS = [
 function setupSupabaseMock(sessions = MOCK_SESSIONS) {
   mockOrder.mockResolvedValue({ data: sessions, error: null });
   mockSelect.mockReturnValue({ order: mockOrder });
+
+  const mockMsgOrder = vi.fn().mockResolvedValue({ data: [], error: null });
+  const mockMsgEq = vi.fn().mockReturnValue({ order: mockMsgOrder });
+  const mockMsgSelect = vi.fn().mockReturnValue({ eq: mockMsgEq });
+
   mockFrom.mockImplementation((table: string) => {
     if (table === "chat_sessions") {
       return { select: mockSelect, insert: mockInsert };
+    }
+    if (table === "chat_messages") {
+      return { select: mockMsgSelect, insert: vi.fn() };
     }
     return { select: vi.fn(), insert: vi.fn() };
   });

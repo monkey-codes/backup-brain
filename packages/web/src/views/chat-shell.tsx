@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCurrentSession } from "@/hooks/use-sessions";
 import { Button } from "@/components/ui/button";
 import { SessionList } from "@/components/session-list";
+import { ChatView } from "@/components/chat-view";
 
 export function ChatShell() {
   const { user, signOut } = useAuth();
@@ -77,17 +78,15 @@ export function ChatShell() {
             </Button>
           </div>
         </header>
-        <main className="flex flex-1 items-center justify-center">
-          {currentSession ? (
-            <p className="text-muted-foreground">
-              Chat coming soon
-            </p>
-          ) : (
+        {currentSession ? (
+          <ChatView sessionId={currentSession.id} />
+        ) : (
+          <main className="flex flex-1 items-center justify-center">
             <p className="text-muted-foreground">
               Select a conversation or start a new one
             </p>
-          )}
-        </main>
+          </main>
+        )}
       </div>
     </div>
   );
