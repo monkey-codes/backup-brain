@@ -6,6 +6,7 @@ import { OpenAIProvider, OpenAIEmbeddingProvider } from "./llm-provider.js";
 import { McpClient } from "./mcp-client.js";
 import { SessionLock } from "./session-lock.js";
 import { recoverUnanswered, subscribeToMessages, startHealthServer } from "./startup.js";
+import { startScheduler } from "./scheduler.js";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -48,6 +49,9 @@ async function main(): Promise<void> {
 
   // Recover unanswered messages from downtime
   await recoverUnanswered(deps);
+
+  // Start scheduled jobs (reminder checker, etc.)
+  startScheduler(supabase);
 
   // Subscribe to new user messages
   subscribeToMessages(deps);

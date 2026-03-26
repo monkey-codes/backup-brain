@@ -13,9 +13,11 @@
   "dependencies": {
     "@backup-brain/shared": "workspace:*",
     "@supabase/supabase-js": "^2.100.0",
+    "node-cron": "^4.2.1",
     "openai": "^6.33.0"
   },
   "devDependencies": {
+    "@types/node-cron": "^3.0.11",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "vitest": "^4.1.1"

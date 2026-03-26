@@ -21,9 +21,17 @@ vi.mock("@/lib/supabase", () => ({
     from: () => ({
       select: () => ({
         order: () => Promise.resolve({ data: [], error: null }),
+        is: () => ({
+          order: () => Promise.resolve({ data: [], error: null }),
+        }),
       }),
       insert: vi.fn(),
     }),
+    channel: () => ({
+      on: vi.fn().mockReturnThis(),
+      subscribe: vi.fn(),
+    }),
+    removeChannel: vi.fn(),
   },
 }));
 

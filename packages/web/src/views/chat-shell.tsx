@@ -1,17 +1,21 @@
 import { useState } from "react";
-import { Menu, X, ClipboardCheck } from "lucide-react";
+import { Menu, X, ClipboardCheck, Bell } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useCurrentSession } from "@/hooks/use-sessions";
+import { useNotifications, useUnreadCount } from "@/hooks/use-notifications";
 import { Button } from "@/components/ui/button";
 import { SessionList } from "@/components/session-list";
 import { ChatView } from "@/components/chat-view";
 import { DecisionReviewView } from "@/views/decision-review";
+import { NotificationsView } from "@/views/notifications";
 
 export function ChatShell() {
   const { user, signOut } = useAuth();
   const { currentSession } = useCurrentSession();
+  const { data: notifications } = useNotifications();
+  const unreadCount = useUnreadCount(notifications);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [view, setView] = useState<"chat" | "review">("chat");
+  const [view, setView] = useState<"chat" | "review" | "notifications">("chat");
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -75,6 +79,24 @@ export function ChatShell() {
           </div>
           <div className="flex items-center gap-3">
             <Button
+              variant={view === "notifications" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setView(view === "notifications" ? "chat" : "notifications")}
+              data-testid="notifications-nav-button"
+              className="relative"
+            >
+              <Bell className="mr-1 h-4 w-4" />
+              Notifications
+              {unreadCount > 0 && (
+                <span
+                  data-testid="unread-badge"
+                  className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white"
+                >
+                  {unreadCount}
+                </span>
+              )}
+            </Button>
+            <Button
               variant={view === "review" ? "default" : "outline"}
               size="sm"
               onClick={() => setView(view === "review" ? "chat" : "review")}
@@ -89,7 +111,9 @@ export function ChatShell() {
             </Button>
           </div>
         </header>
-        {view === "review" ? (
+        {view === "notifications" ? (
+          <NotificationsView onBack={() => setView("chat")} />
+        ) : view === "review" ? (
           <DecisionReviewView onBack={() => setView("chat")} />
         ) : currentSession ? (
           <ChatView sessionId={currentSession.id} />
