@@ -36,3 +36,23 @@ tasks:
     desc: Type-check all packages
     cmds:
       - pnpm -r run typecheck
+
+  db:start:
+    desc: Start local Supabase
+    cmds:
+      - supabase start
+
+  db:stop:
+    desc: Stop local Supabase
+    cmds:
+      - supabase stop
+
+  db:reset:
+    desc: Reset local database (applies all migrations from scratch)
+    cmds:
+      - supabase db reset
+
+  db:migration:
+    desc: Create a new migration file
+    cmds:
+      - supabase migration new {{.CLI_ARGS}}
