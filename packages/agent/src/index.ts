@@ -50,8 +50,8 @@ async function main(): Promise<void> {
   // Recover unanswered messages from downtime
   await recoverUnanswered(deps);
 
-  // Start scheduled jobs (reminder checker, etc.)
-  startScheduler(supabase);
+  // Start scheduled jobs (reminder checker, proactive reviewer)
+  startScheduler(supabase, { supabase, llm, embedding, mcp });
 
   // Subscribe to new user messages
   subscribeToMessages(deps);
