@@ -42,6 +42,12 @@ tasks:
     cmds:
       - pnpm -r run typecheck
 
+  test:agent:
+    desc: Run agent unit and integration tests
+    dir: packages/agent
+    cmds:
+      - pnpm run test
+
   test:mcp:
     desc: Run MCP server integration tests (requires supabase start + functions serve)
     dir: supabase/functions
