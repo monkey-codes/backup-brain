@@ -13,7 +13,12 @@ tasks:
 
   dev:
     desc: Start development servers
-    deps: [dev:web, dev:agent]
+    deps: [dev:web, dev:agent, dev:functions]
+
+  dev:functions:
+    desc: Serve Supabase Edge Functions locally
+    cmds:
+      - supabase functions serve --no-verify-jwt
 
   dev:web:
     desc: Start web dev server
@@ -36,6 +41,12 @@ tasks:
     desc: Type-check all packages
     cmds:
       - pnpm -r run typecheck
+
+  test:mcp:
+    desc: Run MCP server integration tests (requires supabase start + functions serve)
+    dir: supabase/functions
+    cmds:
+      - deno test --no-check --no-lock --allow-net --allow-env mcp/tools_test.ts
 
   db:start:
     desc: Start local Supabase

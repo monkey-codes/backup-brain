@@ -1,0 +1,9 @@
+{
+  "lock": false,
+  "imports": {
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@^2",
+    "hono": "npm:hono@^4",
+    "zod": "npm:zod@^3",
+    "zod-to-json-schema": "npm:zod-to-json-schema@^3"
+  }
+}

@@ -1,0 +1,12 @@
+# Supabase
+.branches
+.temp
+
+# Edge Functions
+functions/node_modules/
+functions/deno.lock
+
+# dotenvx
+.env.keys
+.env.local
+.env.*.local
