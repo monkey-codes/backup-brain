@@ -1,15 +1,17 @@
 import { useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, ClipboardCheck } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useCurrentSession } from "@/hooks/use-sessions";
 import { Button } from "@/components/ui/button";
 import { SessionList } from "@/components/session-list";
 import { ChatView } from "@/components/chat-view";
+import { DecisionReviewView } from "@/views/decision-review";
 
 export function ChatShell() {
   const { user, signOut } = useAuth();
   const { currentSession } = useCurrentSession();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [view, setView] = useState<"chat" | "review">("chat");
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -72,13 +74,24 @@ export function ChatShell() {
             </h1>
           </div>
           <div className="flex items-center gap-3">
+            <Button
+              variant={view === "review" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setView(view === "review" ? "chat" : "review")}
+              data-testid="review-nav-button"
+            >
+              <ClipboardCheck className="mr-1 h-4 w-4" />
+              Review
+            </Button>
             <span className="text-sm text-muted-foreground">{user?.email}</span>
             <Button variant="outline" size="sm" onClick={signOut}>
               Sign out
             </Button>
           </div>
         </header>
-        {currentSession ? (
+        {view === "review" ? (
+          <DecisionReviewView onBack={() => setView("chat")} />
+        ) : currentSession ? (
           <ChatView sessionId={currentSession.id} />
         ) : (
           <main className="flex flex-1 items-center justify-center">
