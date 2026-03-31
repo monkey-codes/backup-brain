@@ -73,7 +73,9 @@ describe("Auth flow", () => {
     renderApp("/");
 
     await waitFor(() => {
-      expect(screen.getByText("Sign in to your account")).toBeInTheDocument();
+      expect(
+        screen.getByText("Secure your digital consciousness.")
+      ).toBeInTheDocument();
     });
   });
 
@@ -97,9 +99,9 @@ describe("Auth flow", () => {
     renderApp("/login");
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Email")).toBeInTheDocument();
+      expect(screen.getByLabelText("Neural ID")).toBeInTheDocument();
     });
-    expect(screen.getByLabelText("Password")).toBeInTheDocument();
+    expect(screen.getByLabelText("Access Key")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
   });
 
@@ -113,11 +115,11 @@ describe("Auth flow", () => {
     renderApp("/login");
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Email")).toBeInTheDocument();
+      expect(screen.getByLabelText("Neural ID")).toBeInTheDocument();
     });
 
-    await user.type(screen.getByLabelText("Email"), "test@example.com");
-    await user.type(screen.getByLabelText("Password"), "wrongpassword");
+    await user.type(screen.getByLabelText("Neural ID"), "test@example.com");
+    await user.type(screen.getByLabelText("Access Key"), "wrongpassword");
     await user.click(screen.getByRole("button", { name: "Sign in" }));
 
     await waitFor(() => {
@@ -153,11 +155,11 @@ describe("Auth flow", () => {
     renderApp("/login");
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Email")).toBeInTheDocument();
+      expect(screen.getByLabelText("Neural ID")).toBeInTheDocument();
     });
 
-    await user.type(screen.getByLabelText("Email"), "test@example.com");
-    await user.type(screen.getByLabelText("Password"), "correctpassword");
+    await user.type(screen.getByLabelText("Neural ID"), "test@example.com");
+    await user.type(screen.getByLabelText("Access Key"), "correctpassword");
     await user.click(screen.getByRole("button", { name: "Sign in" }));
 
     await waitFor(() => {
@@ -201,7 +203,9 @@ describe("Auth flow", () => {
     await user.click(screen.getByTestId("drawer-sign-out"));
 
     await waitFor(() => {
-      expect(screen.getByText("Sign in to your account")).toBeInTheDocument();
+      expect(
+        screen.getByText("Secure your digital consciousness.")
+      ).toBeInTheDocument();
     });
   });
 
