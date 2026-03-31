@@ -100,7 +100,7 @@ function renderChatShell() {
           </MemoryRouter>
         </SessionProvider>
       </AuthProvider>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
 }
 
@@ -134,7 +134,9 @@ describe("Chat sessions", () => {
 
     const sidebar = getSidebar();
     await waitFor(() => {
-      expect(sidebar.getByText("New chat", { selector: "[data-active]" })).toBeInTheDocument();
+      expect(
+        sidebar.getByText("New chat", { selector: "[data-active]" })
+      ).toBeInTheDocument();
     });
   });
 
@@ -180,7 +182,9 @@ describe("Chat sessions", () => {
     await user.click(sidebar.getByText("Second conversation"));
 
     // The clicked session should be marked as active
-    const sessionItem = sidebar.getByText("Second conversation").closest("[data-active]");
+    const sessionItem = sidebar
+      .getByText("Second conversation")
+      .closest("[data-active]");
     expect(sessionItem).toHaveAttribute("data-active", "true");
   });
 

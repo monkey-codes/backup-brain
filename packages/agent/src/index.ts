@@ -5,7 +5,11 @@ import { fileURLToPath } from "node:url";
 import { OpenAIProvider, OpenAIEmbeddingProvider } from "./llm-provider.js";
 import { McpClient } from "./mcp-client.js";
 import { SessionLock } from "./session-lock.js";
-import { recoverUnanswered, subscribeToMessages, startHealthServer } from "./startup.js";
+import {
+  recoverUnanswered,
+  subscribeToMessages,
+  startHealthServer,
+} from "./startup.js";
 import { startScheduler } from "./scheduler.js";
 
 // ---------------------------------------------------------------------------
@@ -15,7 +19,8 @@ import { startScheduler } from "./scheduler.js";
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "http://127.0.0.1:54321";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY ?? "";
-const MCP_URL = process.env.MCP_URL ?? "http://127.0.0.1:54321/functions/v1/mcp";
+const MCP_URL =
+  process.env.MCP_URL ?? "http://127.0.0.1:54321/functions/v1/mcp";
 const HEALTH_PORT = parseInt(process.env.HEALTH_PORT ?? "3001", 10);
 
 // ---------------------------------------------------------------------------
@@ -23,7 +28,10 @@ const HEALTH_PORT = parseInt(process.env.HEALTH_PORT ?? "3001", 10);
 // ---------------------------------------------------------------------------
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const systemPrompt = readFileSync(resolve(__dirname, "../prompts/system.md"), "utf-8");
+const systemPrompt = readFileSync(
+  resolve(__dirname, "../prompts/system.md"),
+  "utf-8"
+);
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 const llm = new OpenAIProvider(OPENAI_API_KEY);

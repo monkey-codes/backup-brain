@@ -23,7 +23,9 @@ interface MockSupabaseConfig {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function createMockSupabase(config: MockSupabaseConfig): any {
-  const upsertFn = vi.fn(async () => config.agentStateUpsertResult ?? { error: null });
+  const upsertFn = vi.fn(
+    async () => config.agentStateUpsertResult ?? { error: null }
+  );
 
   return {
     from: vi.fn((table: string) => {
@@ -35,7 +37,13 @@ function createMockSupabase(config: MockSupabaseConfig): any {
                 return {
                   lt: vi.fn(() => ({
                     order: vi.fn(() => ({
-                      limit: vi.fn(() => config.lowConfidenceResult ?? { data: [], error: null }),
+                      limit: vi.fn(
+                        () =>
+                          config.lowConfidenceResult ?? {
+                            data: [],
+                            error: null,
+                          }
+                      ),
                     })),
                   })),
                 };
@@ -43,7 +51,9 @@ function createMockSupabase(config: MockSupabaseConfig): any {
               if (val === "corrected") {
                 return {
                   order: vi.fn(() => ({
-                    limit: vi.fn(() => config.correctedResult ?? { data: [], error: null }),
+                    limit: vi.fn(
+                      () => config.correctedResult ?? { data: [], error: null }
+                    ),
                   })),
                 };
               }
@@ -56,7 +66,10 @@ function createMockSupabase(config: MockSupabaseConfig): any {
         return {
           select: vi.fn(() => ({
             eq: vi.fn(() => ({
-              single: vi.fn(async () => config.agentStateSelectResult ?? { data: null, error: null }),
+              single: vi.fn(
+                async () =>
+                  config.agentStateSelectResult ?? { data: null, error: null }
+              ),
             })),
           })),
           upsert: upsertFn,
@@ -66,13 +79,23 @@ function createMockSupabase(config: MockSupabaseConfig): any {
         return {
           select: vi.fn(() => ({
             eq: vi.fn(() => ({
-              single: vi.fn(async () => config.thoughtUserResult ?? { data: { created_by: "user-1" }, error: null }),
+              single: vi.fn(
+                async () =>
+                  config.thoughtUserResult ?? {
+                    data: { created_by: "user-1" },
+                    error: null,
+                  }
+              ),
             })),
           })),
         };
       }
       return {
-        select: vi.fn(() => ({ eq: vi.fn(() => ({ single: vi.fn(async () => ({ data: null, error: null })) })) })),
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            single: vi.fn(async () => ({ data: null, error: null })),
+          })),
+        })),
         upsert: upsertFn,
       };
     }),
@@ -81,11 +104,21 @@ function createMockSupabase(config: MockSupabaseConfig): any {
   };
 }
 
-function createMockLLM(responses: Array<{ content: string | null; tool_calls: Array<{ id: string; name: string; arguments: string }>; finish_reason: "stop" | "tool_calls" }>) {
+function createMockLLM(
+  responses: Array<{
+    content: string | null;
+    tool_calls: Array<{ id: string; name: string; arguments: string }>;
+    finish_reason: "stop" | "tool_calls";
+  }>
+) {
   let callIndex = 0;
   return {
     chat: vi.fn(async () => {
-      const resp = responses[callIndex] ?? { content: null, tool_calls: [], finish_reason: "stop" as const };
+      const resp = responses[callIndex] ?? {
+        content: null,
+        tool_calls: [],
+        finish_reason: "stop" as const,
+      };
       callIndex++;
       return resp;
     }),
@@ -95,14 +128,32 @@ function createMockLLM(responses: Array<{ content: string | null; tool_calls: Ar
 function createMockMcp(toolCallResults: Record<string, string> = {}) {
   return {
     listTools: vi.fn(async () => [
-      { name: "update_decision", description: "Update a decision", parameters: {} },
+      {
+        name: "update_decision",
+        description: "Update a decision",
+        parameters: {},
+      },
       { name: "create_group", description: "Create a group", parameters: {} },
-      { name: "create_notification", description: "Create a notification", parameters: {} },
+      {
+        name: "create_notification",
+        description: "Create a notification",
+        parameters: {},
+      },
       { name: "list_decisions", description: "List decisions", parameters: {} },
-      { name: "search_thoughts", description: "Search thoughts", parameters: {} },
-      { name: "capture_thought", description: "Should be filtered out", parameters: {} },
+      {
+        name: "search_thoughts",
+        description: "Search thoughts",
+        parameters: {},
+      },
+      {
+        name: "capture_thought",
+        description: "Should be filtered out",
+        parameters: {},
+      },
     ]),
-    callTool: vi.fn(async (name: string) => toolCallResults[name] ?? '{"ok": true}'),
+    callTool: vi.fn(
+      async (name: string) => toolCallResults[name] ?? '{"ok": true}'
+    ),
   };
 }
 
@@ -112,18 +163,20 @@ function createMockEmbedding() {
   };
 }
 
-function makeCandidateDecision(overrides: Partial<{
-  id: string;
-  thought_id: string;
-  decision_type: string;
-  value: Record<string, unknown>;
-  confidence: number;
-  reasoning: string;
-  review_status: string;
-  corrected_value: Record<string, unknown> | null;
-  corrected_at: string | null;
-  thought_content: string;
-}> = {}) {
+function makeCandidateDecision(
+  overrides: Partial<{
+    id: string;
+    thought_id: string;
+    decision_type: string;
+    value: Record<string, unknown>;
+    confidence: number;
+    reasoning: string;
+    review_status: string;
+    corrected_value: Record<string, unknown> | null;
+    corrected_at: string | null;
+    thought_content: string;
+  }> = {}
+) {
   const thoughtId = overrides.thought_id ?? "thought-1";
   return {
     id: overrides.id ?? "dec-1",
@@ -135,7 +188,10 @@ function makeCandidateDecision(overrides: Partial<{
     review_status: overrides.review_status ?? "pending",
     corrected_value: overrides.corrected_value ?? null,
     corrected_at: overrides.corrected_at ?? null,
-    thoughts: { id: thoughtId, content: overrides.thought_content ?? "Test thought content" },
+    thoughts: {
+      id: thoughtId,
+      content: overrides.thought_content ?? "Test thought content",
+    },
   };
 }
 
@@ -150,8 +206,16 @@ describe("selectCandidates", () => {
     const supabase = createMockSupabase({
       lowConfidenceResult: {
         data: [
-          makeCandidateDecision({ id: "dec-1", confidence: 0.3, thought_content: "Fix the roof" }),
-          makeCandidateDecision({ id: "dec-2", confidence: 0.5, thought_content: "Buy paint" }),
+          makeCandidateDecision({
+            id: "dec-1",
+            confidence: 0.3,
+            thought_content: "Fix the roof",
+          }),
+          makeCandidateDecision({
+            id: "dec-2",
+            confidence: 0.5,
+            thought_content: "Buy paint",
+          }),
         ],
         error: null,
       },
@@ -229,7 +293,10 @@ describe("getLastRunTime", () => {
 
   it("returns the stored timestamp", async () => {
     const supabase = createMockSupabase({
-      agentStateSelectResult: { data: { value: { last_run: "2026-03-25T12:00:00Z" } }, error: null },
+      agentStateSelectResult: {
+        data: { value: { last_run: "2026-03-25T12:00:00Z" } },
+        error: null,
+      },
     });
 
     const result = await getLastRunTime(supabase);
@@ -250,7 +317,7 @@ describe("setLastRunTime", () => {
         key: "proactive_reviewer_last_run",
         value: { last_run: "2026-03-26T06:00:00.000Z" },
       }),
-      { onConflict: "key" },
+      { onConflict: "key" }
     );
   });
 });
@@ -301,7 +368,10 @@ describe("processReviewerBatch", () => {
       },
     ];
 
-    await processReviewerBatch({ supabase, llm, embedding, mcp } as unknown as ReviewerDeps, candidates);
+    await processReviewerBatch(
+      { supabase, llm, embedding, mcp } as unknown as ReviewerDeps,
+      candidates
+    );
 
     // LLM was called
     expect(llm.chat).toHaveBeenCalledTimes(2);
@@ -335,11 +405,16 @@ describe("processReviewerBatch", () => {
       },
     ];
 
-    await processReviewerBatch({ supabase, llm, embedding, mcp } as unknown as ReviewerDeps, candidates);
+    await processReviewerBatch(
+      { supabase, llm, embedding, mcp } as unknown as ReviewerDeps,
+      candidates
+    );
 
     // Verify the tools passed to LLM don't include capture_thought
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const toolsArg = (llm.chat.mock.calls[0] as any[])[1] as Array<{ name: string }>;
+    const toolsArg = (llm.chat.mock.calls[0] as any[])[1] as Array<{
+      name: string;
+    }>;
     const toolNames = toolsArg.map((t: { name: string }) => t.name);
     expect(toolNames).toContain("update_decision");
     expect(toolNames).toContain("create_group");
@@ -397,7 +472,10 @@ describe("processReviewerBatch", () => {
       },
     ];
 
-    await processReviewerBatch({ supabase, llm, embedding, mcp } as unknown as ReviewerDeps, candidates);
+    await processReviewerBatch(
+      { supabase, llm, embedding, mcp } as unknown as ReviewerDeps,
+      candidates
+    );
 
     expect(mcp.callTool).toHaveBeenCalledWith("create_group", {
       name: "Home Repairs",
@@ -447,13 +525,19 @@ describe("processReviewerBatch", () => {
       },
     ];
 
-    await processReviewerBatch({ supabase, llm, embedding, mcp } as unknown as ReviewerDeps, candidates);
+    await processReviewerBatch(
+      { supabase, llm, embedding, mcp } as unknown as ReviewerDeps,
+      candidates
+    );
 
-    expect(mcp.callTool).toHaveBeenCalledWith("create_notification", expect.objectContaining({
-      user_id: "user-1",
-      type: "insight",
-      title: "Home maintenance trend",
-    }));
+    expect(mcp.callTool).toHaveBeenCalledWith(
+      "create_notification",
+      expect.objectContaining({
+        user_id: "user-1",
+        type: "insight",
+        title: "Home maintenance trend",
+      })
+    );
   });
 
   it("handles search_thoughts by embedding the query", async () => {
@@ -472,7 +556,7 @@ describe("processReviewerBatch", () => {
       { content: "Searched.", tool_calls: [], finish_reason: "stop" },
     ]);
 
-    const mcp = createMockMcp({ search_thoughts: '[]' });
+    const mcp = createMockMcp({ search_thoughts: "[]" });
     const embedding = createMockEmbedding();
     const supabase = createMockSupabase({});
 
@@ -490,7 +574,10 @@ describe("processReviewerBatch", () => {
       },
     ];
 
-    await processReviewerBatch({ supabase, llm, embedding, mcp } as unknown as ReviewerDeps, candidates);
+    await processReviewerBatch(
+      { supabase, llm, embedding, mcp } as unknown as ReviewerDeps,
+      candidates
+    );
 
     // Embedding should have been called with the query
     expect(embedding.embed).toHaveBeenCalledWith("home repairs");
@@ -520,7 +607,12 @@ describe("runProactiveReviewer", () => {
     const mcp = createMockMcp();
     const embedding = createMockEmbedding();
 
-    const count = await runProactiveReviewer({ supabase, llm, embedding, mcp } as unknown as ReviewerDeps);
+    const count = await runProactiveReviewer({
+      supabase,
+      llm,
+      embedding,
+      mcp,
+    } as unknown as ReviewerDeps);
 
     expect(count).toBe(0);
     expect(supabase._upsertFn).toHaveBeenCalled();
@@ -541,7 +633,12 @@ describe("runProactiveReviewer", () => {
     const mcp = createMockMcp();
     const embedding = createMockEmbedding();
 
-    const count = await runProactiveReviewer({ supabase, llm, embedding, mcp } as unknown as ReviewerDeps);
+    const count = await runProactiveReviewer({
+      supabase,
+      llm,
+      embedding,
+      mcp,
+    } as unknown as ReviewerDeps);
 
     expect(count).toBe(1);
     expect(llm.chat).toHaveBeenCalled();

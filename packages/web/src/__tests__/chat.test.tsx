@@ -66,7 +66,7 @@ function renderChatView(sessionId = "session-1") {
   return render(
     <QueryClientProvider client={queryClient}>
       <ChatView sessionId={sessionId} />
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
 }
 
@@ -81,13 +81,13 @@ describe("ChatView", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Hello, remember my dentist appointment on Friday"),
+        screen.getByText("Hello, remember my dentist appointment on Friday")
       ).toBeInTheDocument();
     });
     expect(
       screen.getByText(
-        "Got it! I've noted your dentist appointment for Friday.",
-      ),
+        "Got it! I've noted your dentist appointment for Friday."
+      )
     ).toBeInTheDocument();
 
     expect(mockFrom).toHaveBeenCalledWith("chat_messages");
@@ -125,7 +125,9 @@ describe("ChatView", () => {
 
     // Wait for initial messages to load
     await waitFor(() => {
-      expect(screen.getByText("Hello, remember my dentist appointment on Friday")).toBeInTheDocument();
+      expect(
+        screen.getByText("Hello, remember my dentist appointment on Friday")
+      ).toBeInTheDocument();
     });
 
     const input = screen.getByTestId("chat-input");
@@ -219,7 +221,7 @@ describe("ChatView", () => {
         table: "chat_messages",
         filter: "session_id=eq.session-1",
       }),
-      expect.any(Function),
+      expect.any(Function)
     );
   });
 

@@ -81,7 +81,9 @@ export function ChatShell() {
             <Button
               variant={view === "notifications" ? "default" : "outline"}
               size="sm"
-              onClick={() => setView(view === "notifications" ? "chat" : "notifications")}
+              onClick={() =>
+                setView(view === "notifications" ? "chat" : "notifications")
+              }
               data-testid="notifications-nav-button"
               className="relative"
             >

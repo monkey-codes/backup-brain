@@ -146,7 +146,10 @@ export function NotificationsView({ onBack }: { onBack: () => void }) {
             </div>
           )}
           {!isLoading && (!notifications || notifications.length === 0) && (
-            <div data-testid="empty-state" className="flex flex-col items-center py-12 text-center">
+            <div
+              data-testid="empty-state"
+              className="flex flex-col items-center py-12 text-center"
+            >
               <Bell className="mb-3 h-12 w-12 text-muted-foreground/30" />
               <p className="text-muted-foreground">No notifications</p>
               <p className="mt-1 text-sm text-muted-foreground/70">

@@ -15,7 +15,8 @@ vi.mock("openai", () => {
 
 async function getMockCreate() {
   const mod = await import("openai");
-  return (mod as unknown as { __mockCreate: ReturnType<typeof vi.fn> }).__mockCreate;
+  return (mod as unknown as { __mockCreate: ReturnType<typeof vi.fn> })
+    .__mockCreate;
 }
 
 describe("OpenAIProvider", () => {
@@ -97,7 +98,7 @@ describe("OpenAIProvider", () => {
             },
           },
         ],
-      }),
+      })
     );
   });
 
@@ -152,7 +153,11 @@ describe("OpenAIProvider", () => {
         role: "assistant",
         content: null,
         tool_calls: [
-          { id: "call_1", name: "capture_thought", arguments: '{"content":"x"}' },
+          {
+            id: "call_1",
+            name: "capture_thought",
+            arguments: '{"content":"x"}',
+          },
         ],
       },
       {
@@ -189,7 +194,7 @@ describe("OpenAIProvider", () => {
     mockCreate.mockRejectedValue(new Error("API rate limit exceeded"));
 
     await expect(
-      provider.chat([{ role: "user", content: "test" }], []),
+      provider.chat([{ role: "user", content: "test" }], [])
     ).rejects.toThrow("API rate limit exceeded");
   });
 });

@@ -49,9 +49,9 @@ export function useMessages(sessionId: string | undefined) {
               // Avoid duplicates (optimistic insert may already have it)
               if (old.some((m) => m.id === newMessage.id)) return old;
               return [...old, newMessage];
-            },
+            }
           );
-        },
+        }
       )
       .subscribe();
 
@@ -87,7 +87,7 @@ export function useSendMessage(sessionId: string | undefined) {
       });
 
       const previous = queryClient.getQueryData<ChatMessage[]>(
-        messagesKey(sessionId!),
+        messagesKey(sessionId!)
       );
 
       const optimistic: ChatMessage = {
@@ -98,9 +98,8 @@ export function useSendMessage(sessionId: string | undefined) {
         created_at: new Date().toISOString(),
       };
 
-      queryClient.setQueryData<ChatMessage[]>(
-        messagesKey(sessionId!),
-        (old) => (old ? [...old, optimistic] : [optimistic]),
+      queryClient.setQueryData<ChatMessage[]>(messagesKey(sessionId!), (old) =>
+        old ? [...old, optimistic] : [optimistic]
       );
 
       return { previous };

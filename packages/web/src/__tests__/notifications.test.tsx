@@ -107,7 +107,7 @@ function renderNotifications(onBack = vi.fn()) {
       <AuthProvider>
         <NotificationsView onBack={onBack} />
       </AuthProvider>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
 }
 
@@ -121,10 +121,16 @@ describe("NotificationsView", () => {
     renderNotifications();
 
     await waitFor(() => {
-      expect(screen.getByText("Reminder: Dentist appointment")).toBeInTheDocument();
+      expect(
+        screen.getByText("Reminder: Dentist appointment")
+      ).toBeInTheDocument();
     });
-    expect(screen.getByText("Pattern detected: Home repairs")).toBeInTheDocument();
-    expect(screen.getByText("Consider grouping vehicle thoughts")).toBeInTheDocument();
+    expect(
+      screen.getByText("Pattern detected: Home repairs")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Consider grouping vehicle thoughts")
+    ).toBeInTheDocument();
   });
 
   it("shows notification type badges", async () => {
@@ -150,7 +156,9 @@ describe("NotificationsView", () => {
     });
 
     // 2 unread (notif-1 and notif-3 have read_at === null)
-    expect(screen.getByTestId("header-unread-count")).toHaveTextContent("2 unread");
+    expect(screen.getByTestId("header-unread-count")).toHaveTextContent(
+      "2 unread"
+    );
   });
 
   it("shows unread dot for unread notifications", async () => {
@@ -169,7 +177,10 @@ describe("NotificationsView", () => {
   it("dismisses a notification", async () => {
     setupSupabaseMock();
     mockSingle.mockResolvedValue({
-      data: { ...MOCK_NOTIFICATIONS[0], dismissed_at: new Date().toISOString() },
+      data: {
+        ...MOCK_NOTIFICATIONS[0],
+        dismissed_at: new Date().toISOString(),
+      },
       error: null,
     });
     mockEq.mockReturnValue({ select: () => ({ single: mockSingle }) });
@@ -185,7 +196,7 @@ describe("NotificationsView", () => {
     await user.click(screen.getAllByTestId("dismiss-button")[0]);
 
     expect(mockUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ dismissed_at: expect.any(String) }),
+      expect.objectContaining({ dismissed_at: expect.any(String) })
     );
     expect(mockEq).toHaveBeenCalledWith("id", "notif-1");
   });

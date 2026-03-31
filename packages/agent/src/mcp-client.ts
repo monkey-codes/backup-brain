@@ -19,7 +19,10 @@ export class McpClient {
     this.url = url;
   }
 
-  private async rpc(method: string, params?: Record<string, unknown>): Promise<unknown> {
+  private async rpc(
+    method: string,
+    params?: Record<string, unknown>
+  ): Promise<unknown> {
     const id = this.nextId++;
     const body = { jsonrpc: "2.0", method, params, id };
 
@@ -48,13 +51,20 @@ export class McpClient {
     await fetch(this.url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }),
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "notifications/initialized",
+      }),
     });
   }
 
   async listTools(): Promise<ToolDefinition[]> {
     const result = (await this.rpc("tools/list")) as {
-      tools: { name: string; description: string; inputSchema: Record<string, unknown> }[];
+      tools: {
+        name: string;
+        description: string;
+        inputSchema: Record<string, unknown>;
+      }[];
     };
 
     return result.tools.map((t) => ({
@@ -65,7 +75,10 @@ export class McpClient {
   }
 
   async callTool(name: string, args: Record<string, unknown>): Promise<string> {
-    const result = (await this.rpc("tools/call", { name, arguments: args })) as {
+    const result = (await this.rpc("tools/call", {
+      name,
+      arguments: args,
+    })) as {
       content: { type: string; text: string }[];
       isError?: boolean;
     };

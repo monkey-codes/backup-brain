@@ -1,6 +1,10 @@
 import { createServer, type Server } from "node:http";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { LLMProvider, EmbeddingProvider, ToolDefinition } from "./llm-provider.js";
+import type {
+  LLMProvider,
+  EmbeddingProvider,
+  ToolDefinition,
+} from "./llm-provider.js";
 import type { McpClient } from "./mcp-client.js";
 import type { SessionLock } from "./session-lock.js";
 import { processMessage } from "./react-loop.js";
@@ -25,7 +29,7 @@ export interface AgentDeps {
 export async function handleUserMessage(
   deps: AgentDeps,
   sessionId: string,
-  userId: string,
+  userId: string
 ): Promise<void> {
   const release = await deps.sessionLock.acquire(sessionId);
   try {
@@ -89,7 +93,9 @@ export async function handleUserMessage(
 
 export async function recoverUnanswered(deps: AgentDeps): Promise<void> {
   // Prefer the dedicated SQL function
-  const { data: unanswered, error } = await deps.supabase.rpc("get_unanswered_messages");
+  const { data: unanswered, error } = await deps.supabase.rpc(
+    "get_unanswered_messages"
+  );
 
   if (error) {
     // Fallback: simpler query — find sessions with a user message as the latest message
@@ -102,7 +108,10 @@ export async function recoverUnanswered(deps: AgentDeps): Promise<void> {
     if (!sessions?.length) return;
 
     // Group by session, find ones where latest message is from user
-    const sessionLatest = new Map<string, { role: string; created_at: string }>();
+    const sessionLatest = new Map<
+      string,
+      { role: string; created_at: string }
+    >();
     for (const msg of sessions) {
       if (!sessionLatest.has(msg.session_id)) {
         sessionLatest.set(msg.session_id, msg);
@@ -168,9 +177,9 @@ export function subscribeToMessages(deps: AgentDeps): void {
         }
 
         handleUserMessage(deps, session_id, session.user_id).catch((err) =>
-          console.error("Unhandled error in message handler:", err),
+          console.error("Unhandled error in message handler:", err)
         );
-      },
+      }
     )
     .subscribe((status) => {
       console.log(`Realtime subscription status: ${status}`);

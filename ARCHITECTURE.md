@@ -32,21 +32,21 @@ A personal AI memory system where humans capture thoughts through a web app, and
 
 ## Tech Stack
 
-| Component | Technology |
-|---|---|
-| Web app | Vite + React + TypeScript |
-| Agent process | Node.js + TypeScript |
-| MCP server | Supabase Edge Functions (Deno + TypeScript) |
-| LLM | OpenAI (gpt-4o) via OpenAI SDK |
-| Embeddings | OpenAI text-embedding-3-small (1536 dimensions) |
-| Database | Supabase (PostgreSQL + pgvector + Realtime) |
-| Auth | Supabase Auth (email/password) |
-| MCP client | Custom thin JSON-RPC client (`packages/agent/src/mcp-client.ts`) |
-| Agent hosting | AWS App Runner |
-| Web hosting | AWS S3 + CloudFront |
-| Binary management | mise |
-| Task runner | Taskfile (go-task) — delegates to package.json scripts per package |
-| Local dev | Supabase CLI (local Postgres, Auth, Realtime, Edge Functions via Docker) |
+| Component         | Technology                                                               |
+| ----------------- | ------------------------------------------------------------------------ |
+| Web app           | Vite + React + TypeScript                                                |
+| Agent process     | Node.js + TypeScript                                                     |
+| MCP server        | Supabase Edge Functions (Deno + TypeScript)                              |
+| LLM               | OpenAI (gpt-4o) via OpenAI SDK                                           |
+| Embeddings        | OpenAI text-embedding-3-small (1536 dimensions)                          |
+| Database          | Supabase (PostgreSQL + pgvector + Realtime)                              |
+| Auth              | Supabase Auth (email/password)                                           |
+| MCP client        | Custom thin JSON-RPC client (`packages/agent/src/mcp-client.ts`)         |
+| Agent hosting     | AWS App Runner                                                           |
+| Web hosting       | AWS S3 + CloudFront                                                      |
+| Binary management | mise                                                                     |
+| Task runner       | Taskfile (go-task) — delegates to package.json scripts per package       |
+| Local dev         | Supabase CLI (local Postgres, Auth, Realtime, Edge Functions via Docker) |
 
 ## Developer Tooling
 
@@ -67,15 +67,15 @@ Hand-written SQL migrations managed via Supabase CLI. Applied to both local and 
 
 Agent-synthesized summaries of information worth persisting. Not raw user messages — the agent distills the key information into standalone, searchable text. A thought is created when the agent judges that a user's input contains information worth capturing to long-term memory. A chat may produce zero, one, or multiple thoughts.
 
-| Column | Type | Purpose |
-|---|---|---|
-| `id` | uuid | PK |
-| `content` | text | Agent-synthesized thought |
-| `embedding` | vector(1536) | OpenAI text-embedding-3-small, for semantic search |
-| `session_id` | FK to chat_sessions | Which conversation produced this thought |
-| `created_by` | FK to auth.users | Which user's input led to this |
-| `created_at` | timestamptz | |
-| `updated_at` | timestamptz | |
+| Column       | Type                | Purpose                                            |
+| ------------ | ------------------- | -------------------------------------------------- |
+| `id`         | uuid                | PK                                                 |
+| `content`    | text                | Agent-synthesized thought                          |
+| `embedding`  | vector(1536)        | OpenAI text-embedding-3-small, for semantic search |
+| `session_id` | FK to chat_sessions | Which conversation produced this thought           |
+| `created_by` | FK to auth.users    | Which user's input led to this                     |
+| `created_at` | timestamptz         |                                                    |
+| `updated_at` | timestamptz         |                                                    |
 
 No `metadata` JSONB column. All structured data lives in `thought_decisions`.
 
@@ -83,19 +83,19 @@ No `metadata` JSONB column. All structured data lives in `thought_decisions`.
 
 Every decision the agent makes, stored explicitly. One row per decision — a thought with three entities gets three separate decision rows, each with its own ID, confidence, and correction status.
 
-| Column | Type | Purpose |
-|---|---|---|
-| `id` | uuid | PK |
-| `thought_id` | FK to thoughts | Many decisions per thought |
-| `decision_type` | text | `classification`, `entity`, `reminder`, `tag` |
-| `value` | jsonb | Decision payload (see shapes below) |
-| `confidence` | float | 0.0–1.0 |
-| `reasoning` | text | One sentence explaining why |
-| `review_status` | text | `pending`, `accepted`, `corrected` |
-| `corrected_value` | jsonb | Null until user overrides |
-| `corrected_by` | FK to auth.users | |
-| `corrected_at` | timestamptz | |
-| `created_at` | timestamptz | |
+| Column            | Type             | Purpose                                       |
+| ----------------- | ---------------- | --------------------------------------------- |
+| `id`              | uuid             | PK                                            |
+| `thought_id`      | FK to thoughts   | Many decisions per thought                    |
+| `decision_type`   | text             | `classification`, `entity`, `reminder`, `tag` |
+| `value`           | jsonb            | Decision payload (see shapes below)           |
+| `confidence`      | float            | 0.0–1.0                                       |
+| `reasoning`       | text             | One sentence explaining why                   |
+| `review_status`   | text             | `pending`, `accepted`, `corrected`            |
+| `corrected_value` | jsonb            | Null until user overrides                     |
+| `corrected_by`    | FK to auth.users |                                               |
+| `corrected_at`    | timestamptz      |                                               |
+| `created_at`      | timestamptz      |                                               |
 
 Corrections are preserved alongside original decisions for the agent to learn from.
 
@@ -124,41 +124,41 @@ Clusters of related thoughts. Many-to-many relationship.
 - Created and maintained by the proactive reviewer, not at ingestion time
 - Agent can split, merge, rename groups as more data arrives
 
-| Column | Type | Purpose |
-|---|---|---|
-| `id` | uuid | PK |
-| `name` | text | Group name |
-| `description` | text | Agent-generated summary |
-| `created_at` | timestamptz | |
-| `updated_at` | timestamptz | |
+| Column        | Type        | Purpose                 |
+| ------------- | ----------- | ----------------------- |
+| `id`          | uuid        | PK                      |
+| `name`        | text        | Group name              |
+| `description` | text        | Agent-generated summary |
+| `created_at`  | timestamptz |                         |
+| `updated_at`  | timestamptz |                         |
 
 ### `thought_group_members`
 
 Join table for the many-to-many relationship between thoughts and groups.
 
-| Column | Type | Purpose |
-|---|---|---|
-| `thought_id` | FK to thoughts | |
-| `group_id` | FK to thought_groups | |
-| `added_at` | timestamptz | |
+| Column       | Type                 | Purpose |
+| ------------ | -------------------- | ------- |
+| `thought_id` | FK to thoughts       |         |
+| `group_id`   | FK to thought_groups |         |
+| `added_at`   | timestamptz          |         |
 
 ### `notifications`
 
 Agent writes here, app reads here.
 
-| Column | Type | Purpose |
-|---|---|---|
-| `id` | uuid | PK |
-| `user_id` | FK to auth.users | Who this is for |
-| `type` | text | `reminder`, `suggestion`, `insight` |
-| `title` | text | Short summary |
-| `body` | text | Full notification content |
-| `thought_id` | FK to thoughts (nullable) | Related thought, if any |
-| `decision_id` | FK to thought_decisions (nullable) | Related decision, if any |
-| `delivered_via` | text (nullable) | Future: `email`, `slack`, etc. |
-| `read_at` | timestamptz (nullable) | User opened it |
-| `dismissed_at` | timestamptz (nullable) | User dismissed it |
-| `created_at` | timestamptz | |
+| Column          | Type                               | Purpose                             |
+| --------------- | ---------------------------------- | ----------------------------------- |
+| `id`            | uuid                               | PK                                  |
+| `user_id`       | FK to auth.users                   | Who this is for                     |
+| `type`          | text                               | `reminder`, `suggestion`, `insight` |
+| `title`         | text                               | Short summary                       |
+| `body`          | text                               | Full notification content           |
+| `thought_id`    | FK to thoughts (nullable)          | Related thought, if any             |
+| `decision_id`   | FK to thought_decisions (nullable) | Related decision, if any            |
+| `delivered_via` | text (nullable)                    | Future: `email`, `slack`, etc.      |
+| `read_at`       | timestamptz (nullable)             | User opened it                      |
+| `dismissed_at`  | timestamptz (nullable)             | User dismissed it                   |
+| `created_at`    | timestamptz                        |                                     |
 
 `read_at` and `dismissed_at` are both kept — a notification can be seen but still in the list until explicitly cleared. Badge shows count where `read_at IS NULL`. List shows everything where `dismissed_at IS NULL`.
 
@@ -168,13 +168,13 @@ Agent writes here, app reads here.
 
 Each conversation between a user and the agent.
 
-| Column | Type | Purpose |
-|---|---|---|
-| `id` | uuid | PK |
-| `user_id` | FK to auth.users | |
-| `title` | text (nullable) | Agent-generated after first exchange, user-editable |
-| `created_at` | timestamptz | |
-| `updated_at` | timestamptz | |
+| Column       | Type             | Purpose                                             |
+| ------------ | ---------------- | --------------------------------------------------- |
+| `id`         | uuid             | PK                                                  |
+| `user_id`    | FK to auth.users |                                                     |
+| `title`      | text (nullable)  | Agent-generated after first exchange, user-editable |
+| `created_at` | timestamptz      |                                                     |
+| `updated_at` | timestamptz      |                                                     |
 
 Sessions are created by the web app when the user clicks "New Chat." The agent generates a title after the first exchange (user message + agent response) as part of the same LLM call that produces the response.
 
@@ -182,13 +182,13 @@ Sessions are created by the web app when the user clicks "New Chat." The agent g
 
 Individual messages within a chat session.
 
-| Column | Type | Purpose |
-|---|---|---|
-| `id` | uuid | PK |
-| `session_id` | FK to chat_sessions | |
-| `role` | text | `user`, `assistant` |
-| `content` | text | Message text |
-| `created_at` | timestamptz | |
+| Column       | Type                | Purpose             |
+| ------------ | ------------------- | ------------------- |
+| `id`         | uuid                | PK                  |
+| `session_id` | FK to chat_sessions |                     |
+| `role`       | text                | `user`, `assistant` |
+| `content`    | text                | Message text        |
+| `created_at` | timestamptz         |                     |
 
 The web app writes user messages and subscribes to new assistant messages via Supabase Realtime. The agent subscribes to new user messages and writes assistant responses. Short-term memory is the current chat session; long-term memory is the thoughts database, accessed via MCP tools.
 
@@ -200,17 +200,17 @@ Not a separate concept. A reminder is a thought where the agent detects temporal
 
 The MCP server exposes these tools via the MCP protocol. Authenticated with the Supabase service role key.
 
-| Tool | Purpose |
-|---|---|
-| `capture_thought` | Create thought + decisions atomically. Accepts pre-computed embedding from the agent. Returns thought ID and all decision IDs. |
-| `update_thought` | Modify an existing thought + optionally update embedding (agent refines during conversation) |
-| `search_thoughts` | Semantic similarity search (accepts pre-computed query embedding, calls `match_thoughts`) |
-| `list_thoughts` | Browse/filter recent thoughts |
-| `create_decision` | Add a decision to an existing thought (used by proactive reviewer) |
-| `update_decision` | Correct/accept a decision by ID (used by agent during chat corrections) |
-| `list_decisions` | Query decisions (e.g., pending reminders, low-confidence) |
-| `create_group` | Create/update thought groups |
-| `create_notification` | Surface an insight/reminder/suggestion to the user |
+| Tool                  | Purpose                                                                                                                        |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `capture_thought`     | Create thought + decisions atomically. Accepts pre-computed embedding from the agent. Returns thought ID and all decision IDs. |
+| `update_thought`      | Modify an existing thought + optionally update embedding (agent refines during conversation)                                   |
+| `search_thoughts`     | Semantic similarity search (accepts pre-computed query embedding, calls `match_thoughts`)                                      |
+| `list_thoughts`       | Browse/filter recent thoughts                                                                                                  |
+| `create_decision`     | Add a decision to an existing thought (used by proactive reviewer)                                                             |
+| `update_decision`     | Correct/accept a decision by ID (used by agent during chat corrections)                                                        |
+| `list_decisions`      | Query decisions (e.g., pending reminders, low-confidence)                                                                      |
+| `create_group`        | Create/update thought groups                                                                                                   |
+| `create_notification` | Surface an insight/reminder/suggestion to the user                                                                             |
 
 `capture_thought` is atomic — it accepts thought text, a pre-computed embedding, and an array of decisions, inserts the thought, and inserts all decisions in a single database transaction. Returns the created IDs so the agent can reference specific decisions later:
 
@@ -218,14 +218,27 @@ The MCP server exposes these tools via the MCP protocol. Authenticated with the 
 {
   "thought_id": "uuid",
   "decisions": [
-    { "id": "uuid", "decision_type": "classification", "value": {"category": "Home Maintenance"} },
-    { "id": "uuid", "decision_type": "entity", "value": {"name": "plumber", "type": "person"} },
-    { "id": "uuid", "decision_type": "reminder", "value": {"due_at": "...", "description": "..."} }
+    {
+      "id": "uuid",
+      "decision_type": "classification",
+      "value": { "category": "Home Maintenance" }
+    },
+    {
+      "id": "uuid",
+      "decision_type": "entity",
+      "value": { "name": "plumber", "type": "person" }
+    },
+    {
+      "id": "uuid",
+      "decision_type": "reminder",
+      "value": { "due_at": "...", "description": "..." }
+    }
   ]
 }
 ```
 
 Decision corrections happen through two independent paths:
+
 1. **During chat** — user tells the agent, agent calls `update_decision` via MCP
 2. **Via review UI** — user corrects directly in the web app via Supabase JS SDK
 
@@ -237,16 +250,16 @@ Both paths write to the same columns (`review_status`, `corrected_value`, `corre
 
 All user input goes through the agent via chat. The agent determines intent implicitly through tool selection — no separate classification step:
 
-| Intent | Description | Tools called |
-|---|---|---|
-| **Capture** | Input contains information worth persisting | `capture_thought` |
-| **Query** | User is asking to recall past information | `search_thoughts`, `list_thoughts` |
-| **Command** | User is correcting a decision or giving an instruction | `update_decision`, `update_thought` |
-| **Conversation** | Chitchat, acknowledgments, no action needed | None |
+| Intent           | Description                                            | Tools called                        |
+| ---------------- | ------------------------------------------------------ | ----------------------------------- |
+| **Capture**      | Input contains information worth persisting            | `capture_thought`                   |
+| **Query**        | User is asking to recall past information              | `search_thoughts`, `list_thoughts`  |
+| **Command**      | User is correcting a decision or giving an instruction | `update_decision`, `update_thought` |
+| **Conversation** | Chitchat, acknowledgments, no action needed            | None                                |
 
 ### ReAct Loop (Single LLM Call Pattern)
 
-The agent uses a single-call ReAct loop per turn. The full set of MCP tools is provided to OpenAI as tool definitions. The model decides which tools to call (if any) based on the conversation. No separate intent classification step — tool selection *is* the intent.
+The agent uses a single-call ReAct loop per turn. The full set of MCP tools is provided to OpenAI as tool definitions. The model decides which tools to call (if any) based on the conversation. No separate intent classification step — tool selection _is_ the intent.
 
 ```
 User message arrives via Supabase Realtime
@@ -287,10 +300,10 @@ These are processed in order, then the Realtime subscription starts for new mess
 
 ### Realtime Subscriptions
 
-| Subscriber | Table | Event | Filter |
-|---|---|---|---|
-| Web app | `chat_messages` | INSERT | `session_id = current session` |
-| Agent | `chat_messages` | INSERT | `role = 'user'` |
+| Subscriber | Table           | Event  | Filter                         |
+| ---------- | --------------- | ------ | ------------------------------ |
+| Web app    | `chat_messages` | INSERT | `session_id = current session` |
+| Agent      | `chat_messages` | INSERT | `role = 'user'`                |
 
 The agent does not subscribe to decision corrections — it reads past corrections as context when making future decisions. The proactive reviewer naturally picks up corrections every 6 hours.
 
@@ -337,11 +350,13 @@ Creates `notification` rows (type = `reminder`, `decision_id` linked) for each m
 Two-pass approach to avoid sending all thoughts to the LLM:
 
 **Pass 1 — SQL candidate selection:**
+
 - Low-confidence decisions: `WHERE confidence < 0.7 AND review_status = 'pending'`
 - Ungrouped thoughts: `WHERE id NOT IN (SELECT thought_id FROM thought_group_members)`
 - Recent corrections: `WHERE review_status = 'corrected' AND created_at > last_run`
 
 **Pass 2 — LLM processing** of candidates only:
+
 - **Reclassification** — fix low-confidence or corrected-pattern classifications
 - **Grouping** — cluster related thoughts (needs broader context, can regroup over time)
 - **Insights** — surface suggestions, patterns, forgotten follow-ups → creates notifications
@@ -389,7 +404,7 @@ Once an embedding dimension (1536) is chosen, changing it requires re-embedding 
 
 ```typescript
 interface LLMProvider {
-  chat(messages: Message[], tools?: Tool[]): Promise<LLMResponse>
+  chat(messages: Message[], tools?: Tool[]): Promise<LLMResponse>;
 }
 ```
 
@@ -397,12 +412,12 @@ OpenAI first (gpt-4o for reasoning, gpt-4o-mini as an option for cheaper calls l
 
 ## Web App Views (MVP)
 
-| View | Purpose |
-|---|---|
-| **Login** | Email/password auth via Supabase Auth |
-| **Chat** | Main interface — session list sidebar + message area. Session created on "New Chat" click. |
-| **Notifications** | List of reminders, suggestions, insights. Badge for unread. |
-| **Decision Review** | Browse decisions, filter by low confidence/pending, accept or correct |
+| View                | Purpose                                                                                    |
+| ------------------- | ------------------------------------------------------------------------------------------ |
+| **Login**           | Email/password auth via Supabase Auth                                                      |
+| **Chat**            | Main interface — session list sidebar + message area. Session created on "New Chat" click. |
+| **Notifications**   | List of reminders, suggestions, insights. Badge for unread.                                |
+| **Decision Review** | Browse decisions, filter by low confidence/pending, accept or correct                      |
 
 ## Project Structure
 
@@ -425,13 +440,13 @@ The `shared` package contains database-facing types used by both web app and age
 
 ## Deployment
 
-| Component | Production | Local Dev |
-|---|---|---|
-| Agent process | AWS App Runner | `npm run dev` in packages/agent |
-| Web app | AWS S3 + CloudFront | Vite dev server |
-| MCP server | Supabase Edge Functions | Supabase CLI local |
-| Database | Supabase (hosted) | Supabase CLI local (Docker) |
-| Scheduler | node-cron in agent | node-cron in agent |
+| Component     | Production              | Local Dev                       |
+| ------------- | ----------------------- | ------------------------------- |
+| Agent process | AWS App Runner          | `npm run dev` in packages/agent |
+| Web app       | AWS S3 + CloudFront     | Vite dev server                 |
+| MCP server    | Supabase Edge Functions | Supabase CLI local              |
+| Database      | Supabase (hosted)       | Supabase CLI local (Docker)     |
+| Scheduler     | node-cron in agent      | node-cron in agent              |
 
 Environment variables switch between local and production. Same codebase, same architecture — only deployment targets change.
 
@@ -477,21 +492,21 @@ Structured console logs from the agent process with consistent format (timestamp
 
 ### Aligned
 
-| Pattern | How It Maps |
-|---|---|
-| **ReAct** (Reason + Act) | Chat handler: agent receives input → reasons about it → acts via MCP tools → observes result → responds |
-| **Tool Use** | MCP server provides clean tool boundaries; agent decides which tools to call and when |
-| **Simplicity** | Single agent, no framework (LangChain, CrewAI, etc.) — simple, composable patterns |
-| **Auditability** | `thought_decisions` with confidence scores and reasoning — controllable, debuggable agent with human approvals |
-| **Memory** | Three-tier memory: short-term (chat_messages), long-term (thoughts + decisions), episodic (correction history) |
+| Pattern                  | How It Maps                                                                                                    |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| **ReAct** (Reason + Act) | Chat handler: agent receives input → reasons about it → acts via MCP tools → observes result → responds        |
+| **Tool Use**             | MCP server provides clean tool boundaries; agent decides which tools to call and when                          |
+| **Simplicity**           | Single agent, no framework (LangChain, CrewAI, etc.) — simple, composable patterns                             |
+| **Auditability**         | `thought_decisions` with confidence scores and reasoning — controllable, debuggable agent with human approvals |
+| **Memory**               | Three-tier memory: short-term (chat_messages), long-term (thoughts + decisions), episodic (correction history) |
 
 ### Intentional Divergences (Fine for MVP)
 
-| Pattern | Status | Rationale |
-|---|---|---|
-| **Multi-Agent** | Single agent | Multi-agent adds coordination complexity not worth it for a solo build. The clean split between chat-time processing and proactive review means the reviewer could later be extracted into a separate agent without restructuring. |
-| **Plan-and-Execute** | No explicit planning step | Classification and chat are single-step actions that don't need it. The proactive reviewer may benefit from planning later (e.g., "I have 50 ungrouped thoughts, let me plan how to cluster them"). |
-| **Reflection** | Not included | Confidence scores serve a similar purpose. A lightweight self-evaluation step ("does this classification make sense given similar past thoughts?") could be added later as a single extra LLM call. |
+| Pattern              | Status                    | Rationale                                                                                                                                                                                                                          |
+| -------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Multi-Agent**      | Single agent              | Multi-agent adds coordination complexity not worth it for a solo build. The clean split between chat-time processing and proactive review means the reviewer could later be extracted into a separate agent without restructuring. |
+| **Plan-and-Execute** | No explicit planning step | Classification and chat are single-step actions that don't need it. The proactive reviewer may benefit from planning later (e.g., "I have 50 ungrouped thoughts, let me plan how to cluster them").                                |
+| **Reflection**       | Not included              | Confidence scores serve a similar purpose. A lightweight self-evaluation step ("does this classification make sense given similar past thoughts?") could be added later as a single extra LLM call.                                |
 
 ## Future Considerations
 

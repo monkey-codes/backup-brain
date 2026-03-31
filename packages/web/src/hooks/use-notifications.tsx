@@ -42,9 +42,9 @@ export function useNotifications() {
               if (!old) return [newNotification];
               if (old.some((n) => n.id === newNotification.id)) return old;
               return [newNotification, ...old];
-            },
+            }
           );
-        },
+        }
       )
       .subscribe();
 
@@ -59,7 +59,9 @@ export function useNotifications() {
   return query;
 }
 
-export function useUnreadCount(notifications: Notification[] | undefined): number {
+export function useUnreadCount(
+  notifications: Notification[] | undefined
+): number {
   if (!notifications) return 0;
   return notifications.filter((n) => n.read_at === null).length;
 }

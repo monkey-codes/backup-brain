@@ -44,7 +44,7 @@ export function useCreateSession() {
     },
     onSuccess: (newSession) => {
       queryClient.setQueryData<ChatSession[]>(SESSIONS_KEY, (old) =>
-        old ? [newSession, ...old] : [newSession],
+        old ? [newSession, ...old] : [newSession]
       );
     },
   });
@@ -60,7 +60,7 @@ const SessionContext = createContext<SessionContextValue | null>(null);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [currentSession, setCurrentSession] = useState<ChatSession | null>(
-    null,
+    null
   );
 
   const handleSetSession = useCallback((session: ChatSession | null) => {

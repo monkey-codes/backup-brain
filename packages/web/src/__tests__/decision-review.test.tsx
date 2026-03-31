@@ -101,7 +101,7 @@ function renderReview(onBack = vi.fn()) {
       <AuthProvider>
         <DecisionReviewView onBack={onBack} />
       </AuthProvider>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
 }
 
@@ -116,11 +116,11 @@ describe("DecisionReviewView", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Need to fix the roof before winter"),
+        screen.getByText("Need to fix the roof before winter")
       ).toBeInTheDocument();
     });
     expect(
-      screen.getByText("Bob said he'd help with the move"),
+      screen.getByText("Bob said he'd help with the move")
     ).toBeInTheDocument();
   });
 
@@ -154,7 +154,7 @@ describe("DecisionReviewView", () => {
 
     // The needs_review filter should apply .or()
     expect(mockOr).toHaveBeenCalledWith(
-      "review_status.eq.pending,confidence.lt.0.7",
+      "review_status.eq.pending,confidence.lt.0.7"
     );
   });
 
@@ -174,7 +174,7 @@ describe("DecisionReviewView", () => {
     await waitFor(() => {
       // The second call should be for "all" filter
       const calls = mockFrom.mock.calls.filter(
-        (c: string[]) => c[0] === "thought_decisions",
+        (c: string[]) => c[0] === "thought_decisions"
       );
       expect(calls.length).toBeGreaterThanOrEqual(2);
     });
@@ -195,7 +195,9 @@ describe("DecisionReviewView", () => {
     expect(within(cards[0]).getByTestId("correct-button")).toBeInTheDocument();
 
     // Second card (accepted) should NOT have buttons
-    expect(within(cards[1]).queryByTestId("accept-button")).not.toBeInTheDocument();
+    expect(
+      within(cards[1]).queryByTestId("accept-button")
+    ).not.toBeInTheDocument();
 
     // Third card (pending) should have buttons
     expect(within(cards[2]).getByTestId("accept-button")).toBeInTheDocument();
@@ -264,7 +266,7 @@ describe("DecisionReviewView", () => {
         review_status: "corrected",
         corrected_value: { category: "Vehicles" },
         corrected_by: "user-1",
-      }),
+      })
     );
   });
 

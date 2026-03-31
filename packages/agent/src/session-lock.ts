@@ -17,7 +17,10 @@ export class SessionLock {
     });
 
     // Chain: new work starts after existing work completes
-    this.locks.set(sessionId, existing.then(() => next));
+    this.locks.set(
+      sessionId,
+      existing.then(() => next)
+    );
 
     await existing;
     return release;

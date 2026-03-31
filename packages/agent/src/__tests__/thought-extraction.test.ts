@@ -41,7 +41,7 @@ function createMockMcp(results: Record<string, string>): McpClient {
 function getToolCalls(mcp: McpClient): any[][] {
   return (mcp.callTool as ReturnType<typeof vi.fn>).mock.calls.filter(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (c: any[]) => c[0] !== "list_decisions",
+    (c: any[]) => c[0] !== "list_decisions"
   );
 }
 
@@ -177,7 +177,8 @@ describe("Thought extraction, classification & tagging", () => {
         finish_reason: "tool_calls",
       },
       {
-        content: "Got it! I've captured your thought about replacing the gutters.",
+        content:
+          "Got it! I've captured your thought about replacing the gutters.",
         tool_calls: [],
         finish_reason: "stop",
       },
@@ -187,8 +188,16 @@ describe("Thought extraction, classification & tagging", () => {
       capture_thought: JSON.stringify({
         thought_id: "t-1",
         decisions: [
-          { id: "d-1", decision_type: "classification", value: { category: "Home Maintenance" } },
-          { id: "d-2", decision_type: "entity", value: { name: "house", type: "thing" } },
+          {
+            id: "d-1",
+            decision_type: "classification",
+            value: { category: "Home Maintenance" },
+          },
+          {
+            id: "d-2",
+            decision_type: "entity",
+            value: { name: "house", type: "thing" },
+          },
           { id: "d-3", decision_type: "tag", value: { label: "gutters" } },
         ],
       }),
@@ -202,9 +211,13 @@ describe("Thought extraction, classification & tagging", () => {
         mcp,
         embedding: embeddingProvider,
         supabase: createMockSupabase([
-          { role: "user", content: "I need to replace the gutters on the north side of the house" },
+          {
+            role: "user",
+            content:
+              "I need to replace the gutters on the north side of the house",
+          },
         ]),
-      }),
+      })
     );
 
     expect(result).toContain("gutters");
@@ -218,7 +231,7 @@ describe("Thought extraction, classification & tagging", () => {
         created_by: "user-1",
         embedding: expect.any(Array),
         decisions: captureArgs.decisions,
-      }),
+      })
     );
 
     // Verify embedding was generated from thought content
@@ -227,7 +240,8 @@ describe("Thought extraction, classification & tagging", () => {
 
   it("handles multiple decisions with confidence scores and reasoning", async () => {
     const captureArgs = {
-      content: "Meeting with John at the Denver office next Friday to discuss the bakery franchise idea",
+      content:
+        "Meeting with John at the Denver office next Friday to discuss the bakery franchise idea",
       decisions: [
         {
           decision_type: "classification",
@@ -267,9 +281,14 @@ describe("Thought extraction, classification & tagging", () => {
         },
         {
           decision_type: "reminder",
-          value: { due_at: "2026-04-03T09:00:00Z", description: "Meeting with John at Denver office about bakery franchise" },
+          value: {
+            due_at: "2026-04-03T09:00:00Z",
+            description:
+              "Meeting with John at Denver office about bakery franchise",
+          },
           confidence: 0.85,
-          reasoning: "User mentioned a meeting next Friday which is time-sensitive",
+          reasoning:
+            "User mentioned a meeting next Friday which is time-sensitive",
         },
       ],
     };
@@ -302,9 +321,13 @@ describe("Thought extraction, classification & tagging", () => {
         llm,
         mcp,
         supabase: createMockSupabase([
-          { role: "user", content: "Meeting with John at the Denver office next Friday to discuss the bakery franchise idea" },
+          {
+            role: "user",
+            content:
+              "Meeting with John at the Denver office next Friday to discuss the bakery franchise idea",
+          },
         ]),
-      }),
+      })
     );
 
     // Verify all 7 decisions were passed through
@@ -315,7 +338,9 @@ describe("Thought extraction, classification & tagging", () => {
     expect(passedDecisions).toHaveLength(7);
 
     // Verify decision types
-    const types = passedDecisions.map((d: { decision_type: string }) => d.decision_type);
+    const types = passedDecisions.map(
+      (d: { decision_type: string }) => d.decision_type
+    );
     expect(types.filter((t: string) => t === "classification")).toHaveLength(1);
     expect(types.filter((t: string) => t === "entity")).toHaveLength(3);
     expect(types.filter((t: string) => t === "tag")).toHaveLength(2);
@@ -357,7 +382,11 @@ describe("Thought extraction, classification & tagging", () => {
     ]);
 
     const mcp = createMockMcp({
-      create_decision: JSON.stringify({ id: "d-new", decision_type: "tag", value: { label: "urgent" } }),
+      create_decision: JSON.stringify({
+        id: "d-new",
+        decision_type: "tag",
+        value: { label: "urgent" },
+      }),
     });
 
     const result = await processMessage(
@@ -367,7 +396,7 @@ describe("Thought extraction, classification & tagging", () => {
         supabase: createMockSupabase([
           { role: "user", content: "Actually that last thing is urgent" },
         ]),
-      }),
+      })
     );
 
     expect(result).toContain("urgent");
@@ -388,7 +417,8 @@ describe("Thought extraction, classification & tagging", () => {
           decision_type: "classification",
           value: { category: "Food & Dining" },
           confidence: 0.9,
-          reasoning: "User is recommending a restaurant, which fits a food category",
+          reasoning:
+            "User is recommending a restaurant, which fits a food category",
         },
       ],
     };
@@ -470,23 +500,25 @@ describe("Thought extraction, classification & tagging", () => {
     const embeddingProvider = createMockEmbedding();
 
     await processMessage(
-      buildContext({ llm, mcp, embedding: embeddingProvider }),
+      buildContext({ llm, mcp, embedding: embeddingProvider })
     );
 
     // Embedding generated once — only for capture_thought
     expect(embeddingProvider.embed).toHaveBeenCalledTimes(1);
-    expect(embeddingProvider.embed).toHaveBeenCalledWith("Buy new tires for the truck");
+    expect(embeddingProvider.embed).toHaveBeenCalledWith(
+      "Buy new tires for the truck"
+    );
 
     // capture_thought gets embedding injected
-    const captureCall = (mcp.callTool as ReturnType<typeof vi.fn>).mock.calls.find(
-      (c: unknown[]) => c[0] === "capture_thought",
-    );
+    const captureCall = (
+      mcp.callTool as ReturnType<typeof vi.fn>
+    ).mock.calls.find((c: unknown[]) => c[0] === "capture_thought");
     expect(captureCall![1].embedding).toHaveLength(1536);
 
     // set_session_title does NOT get embedding
-    const titleCall = (mcp.callTool as ReturnType<typeof vi.fn>).mock.calls.find(
-      (c: unknown[]) => c[0] === "set_session_title",
-    );
+    const titleCall = (
+      mcp.callTool as ReturnType<typeof vi.fn>
+    ).mock.calls.find((c: unknown[]) => c[0] === "set_session_title");
     expect(titleCall![1].embedding).toBeUndefined();
   });
 

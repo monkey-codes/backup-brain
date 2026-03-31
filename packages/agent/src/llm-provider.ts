@@ -50,7 +50,10 @@ export class OpenAIProvider implements LLMProvider {
     this.model = model;
   }
 
-  async chat(messages: LLMMessage[], tools: ToolDefinition[]): Promise<LLMResponse> {
+  async chat(
+    messages: LLMMessage[],
+    tools: ToolDefinition[]
+  ): Promise<LLMResponse> {
     const openaiMessages = messages.map((m) => {
       if (m.role === "tool") {
         return {
@@ -90,8 +93,11 @@ export class OpenAIProvider implements LLMProvider {
 
     const choice = response.choices[0];
     const toolCalls: ToolCall[] = (choice.message.tool_calls ?? [])
-      .filter((tc): tc is OpenAI.ChatCompletionMessageToolCall & { type: "function" } =>
-        tc.type === "function",
+      .filter(
+        (
+          tc
+        ): tc is OpenAI.ChatCompletionMessageToolCall & { type: "function" } =>
+          tc.type === "function"
       )
       .map((tc) => ({
         id: tc.id,
@@ -102,7 +108,8 @@ export class OpenAIProvider implements LLMProvider {
     return {
       content: choice.message.content,
       tool_calls: toolCalls,
-      finish_reason: choice.finish_reason === "tool_calls" ? "tool_calls" : "stop",
+      finish_reason:
+        choice.finish_reason === "tool_calls" ? "tool_calls" : "stop",
     };
   }
 }

@@ -1,6 +1,11 @@
 import cron from "node-cron";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { LLMProvider, LLMMessage, ToolDefinition, EmbeddingProvider } from "./llm-provider.js";
+import type {
+  LLMProvider,
+  LLMMessage,
+  ToolDefinition,
+  EmbeddingProvider,
+} from "./llm-provider.js";
 import type { McpClient } from "./mcp-client.js";
 import { rewriteToolsForLLM } from "./react-loop.js";
 
@@ -9,7 +14,9 @@ import { rewriteToolsForLLM } from "./react-loop.js";
 // Finds due reminder decisions without existing notifications and creates them.
 // ---------------------------------------------------------------------------
 
-export async function checkReminders(supabase: SupabaseClient): Promise<number> {
+export async function checkReminders(
+  supabase: SupabaseClient
+): Promise<number> {
   // Find reminder decisions that are due and don't already have a notification.
   // We look at thought_decisions where:
   //   - decision_type = 'reminder'
@@ -20,7 +27,10 @@ export async function checkReminders(supabase: SupabaseClient): Promise<number> 
 
   if (error) {
     // Fallback: manual query if the RPC doesn't exist yet
-    console.warn("get_due_reminders RPC not available, using fallback query:", error.message);
+    console.warn(
+      "get_due_reminders RPC not available, using fallback query:",
+      error.message
+    );
     return checkRemindersFallback(supabase);
   }
 
@@ -38,11 +48,15 @@ interface ReminderCandidate {
   due_at: string;
 }
 
-async function checkRemindersFallback(supabase: SupabaseClient): Promise<number> {
+async function checkRemindersFallback(
+  supabase: SupabaseClient
+): Promise<number> {
   // Get all due reminder decisions
   const { data: decisions, error: decError } = await supabase
     .from("thought_decisions")
-    .select("id, thought_id, value, corrected_value, review_status, thoughts(id, content, created_by)")
+    .select(
+      "id, thought_id, value, corrected_value, review_status, thoughts(id, content, created_by)"
+    )
     .eq("decision_type", "reminder")
     .lte("value->>due_at", new Date().toISOString());
 
@@ -52,9 +66,10 @@ async function checkRemindersFallback(supabase: SupabaseClient): Promise<number>
   // Filter to those that are actually due
   const now = new Date();
   const dueDecisions = decisions.filter((d) => {
-    const value = d.review_status === "corrected" && d.corrected_value
-      ? d.corrected_value as { due_at?: string; description?: string }
-      : d.value as { due_at?: string; description?: string };
+    const value =
+      d.review_status === "corrected" && d.corrected_value
+        ? (d.corrected_value as { due_at?: string; description?: string })
+        : (d.value as { due_at?: string; description?: string });
     if (!value.due_at) return false;
     return new Date(value.due_at) <= now;
   });
@@ -73,10 +88,15 @@ async function checkRemindersFallback(supabase: SupabaseClient): Promise<number>
   const candidates: ReminderCandidate[] = dueDecisions
     .filter((d) => !notifiedIds.has(d.id))
     .map((d) => {
-      const thought = d.thoughts as unknown as { id: string; content: string; created_by: string };
-      const value = d.review_status === "corrected" && d.corrected_value
-        ? d.corrected_value as { due_at: string; description: string }
-        : d.value as { due_at: string; description: string };
+      const thought = d.thoughts as unknown as {
+        id: string;
+        content: string;
+        created_by: string;
+      };
+      const value =
+        d.review_status === "corrected" && d.corrected_value
+          ? (d.corrected_value as { due_at: string; description: string })
+          : (d.value as { due_at: string; description: string });
       return {
         decision_id: d.id,
         thought_id: thought.id,
@@ -92,7 +112,7 @@ async function checkRemindersFallback(supabase: SupabaseClient): Promise<number>
 
 async function createNotificationsForReminders(
   supabase: SupabaseClient,
-  candidates: ReminderCandidate[],
+  candidates: ReminderCandidate[]
 ): Promise<number> {
   if (!candidates.length) return 0;
 
@@ -146,7 +166,9 @@ export interface ReviewerDeps {
 /**
  * Get the last run time from agent_state.
  */
-export async function getLastRunTime(supabase: SupabaseClient): Promise<Date | null> {
+export async function getLastRunTime(
+  supabase: SupabaseClient
+): Promise<Date | null> {
   const { data, error } = await supabase
     .from("agent_state")
     .select("value")
@@ -162,16 +184,24 @@ export async function getLastRunTime(supabase: SupabaseClient): Promise<Date | n
 /**
  * Set the last run time in agent_state.
  */
-export async function setLastRunTime(supabase: SupabaseClient, time: Date): Promise<void> {
-  const { error } = await supabase
-    .from("agent_state")
-    .upsert(
-      { key: "proactive_reviewer_last_run", value: { last_run: time.toISOString() }, updated_at: time.toISOString() },
-      { onConflict: "key" },
-    );
+export async function setLastRunTime(
+  supabase: SupabaseClient,
+  time: Date
+): Promise<void> {
+  const { error } = await supabase.from("agent_state").upsert(
+    {
+      key: "proactive_reviewer_last_run",
+      value: { last_run: time.toISOString() },
+      updated_at: time.toISOString(),
+    },
+    { onConflict: "key" }
+  );
 
   if (error) {
-    console.error("Failed to update proactive reviewer last run time:", error.message);
+    console.error(
+      "Failed to update proactive reviewer last run time:",
+      error.message
+    );
   }
 }
 
@@ -179,11 +209,15 @@ export async function setLastRunTime(supabase: SupabaseClient, time: Date): Prom
  * Pass 1: SQL candidate selection.
  * Finds low-confidence decisions (< 0.7) and corrected decisions, capped at 50 thoughts.
  */
-export async function selectCandidates(supabase: SupabaseClient): Promise<ReviewerCandidate[]> {
+export async function selectCandidates(
+  supabase: SupabaseClient
+): Promise<ReviewerCandidate[]> {
   // Get low-confidence decisions (pending, confidence < 0.7)
   const { data: lowConfidence, error: lcError } = await supabase
     .from("thought_decisions")
-    .select("id, thought_id, decision_type, value, confidence, reasoning, review_status, corrected_value, thoughts(id, content)")
+    .select(
+      "id, thought_id, decision_type, value, confidence, reasoning, review_status, corrected_value, thoughts(id, content)"
+    )
     .eq("review_status", "pending")
     .lt("confidence", 0.7)
     .order("confidence", { ascending: true })
@@ -201,7 +235,9 @@ export async function selectCandidates(supabase: SupabaseClient): Promise<Review
   if (remaining > 0) {
     const { data, error } = await supabase
       .from("thought_decisions")
-      .select("id, thought_id, decision_type, value, confidence, reasoning, review_status, corrected_value, thoughts(id, content)")
+      .select(
+        "id, thought_id, decision_type, value, confidence, reasoning, review_status, corrected_value, thoughts(id, content)"
+      )
       .eq("review_status", "corrected")
       .order("corrected_at", { ascending: false })
       .limit(remaining);
@@ -280,17 +316,25 @@ Look for patterns across the batch of thoughts:
  */
 export async function processReviewerBatch(
   deps: ReviewerDeps,
-  candidates: ReviewerCandidate[],
+  candidates: ReviewerCandidate[]
 ): Promise<void> {
   const tools = await deps.mcp.listTools();
   // Only expose the tools the reviewer needs
-  const reviewerToolNames = new Set(["update_decision", "create_group", "create_notification", "list_decisions", "search_thoughts"]);
+  const reviewerToolNames = new Set([
+    "update_decision",
+    "create_group",
+    "create_notification",
+    "list_decisions",
+    "search_thoughts",
+  ]);
   const filteredTools = tools.filter((t) => reviewerToolNames.has(t.name));
   const llmTools = rewriteToolsForLLM(filteredTools);
 
   // Build the user message with candidate data
-  const candidateDescriptions = candidates.map((c, i) =>
-    `### Candidate ${i + 1}
+  const candidateDescriptions = candidates
+    .map(
+      (c, i) =>
+        `### Candidate ${i + 1}
 - **Thought ID**: ${c.thought_id}
 - **Thought content**: "${c.thought_content}"
 - **Decision ID**: ${c.decision_id}
@@ -299,7 +343,8 @@ export async function processReviewerBatch(
 - **Confidence**: ${c.confidence}
 - **Reasoning**: "${c.reasoning}"
 - **Review status**: ${c.review_status}${c.corrected_value ? `\n- **Corrected value**: ${JSON.stringify(c.corrected_value)}` : ""}`
-  ).join("\n\n");
+    )
+    .join("\n\n");
 
   // Get a user_id from one of the candidates for creating notifications
   // We need to query for this since candidates don't carry user_id
@@ -362,7 +407,9 @@ export async function processReviewerBatch(
  * Main proactive reviewer function.
  * Called by the cron scheduler every 6 hours.
  */
-export async function runProactiveReviewer(deps: ReviewerDeps): Promise<number> {
+export async function runProactiveReviewer(
+  deps: ReviewerDeps
+): Promise<number> {
   console.log("Proactive reviewer starting...");
 
   // Pass 1: Select candidates
@@ -390,7 +437,10 @@ export async function runProactiveReviewer(deps: ReviewerDeps): Promise<number> 
 // Scheduler — starts all cron jobs
 // ---------------------------------------------------------------------------
 
-export function startScheduler(supabase: SupabaseClient, reviewerDeps?: ReviewerDeps): void {
+export function startScheduler(
+  supabase: SupabaseClient,
+  reviewerDeps?: ReviewerDeps
+): void {
   // Reminder checker: every minute
   cron.schedule("* * * * *", async () => {
     try {
@@ -409,7 +459,9 @@ export function startScheduler(supabase: SupabaseClient, reviewerDeps?: Reviewer
         console.error("Proactive reviewer error:", err);
       }
     });
-    console.log("Scheduler started: reminder checker (every 1 min), proactive reviewer (every 6 hrs).");
+    console.log(
+      "Scheduler started: reminder checker (every 1 min), proactive reviewer (every 6 hrs)."
+    );
   } else {
     console.log("Scheduler started: reminder checker (every 1 min).");
   }

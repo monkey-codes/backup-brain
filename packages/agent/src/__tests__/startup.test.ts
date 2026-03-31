@@ -5,7 +5,11 @@ import {
   startHealthServer,
   type AgentDeps,
 } from "../startup.js";
-import type { LLMProvider, LLMResponse, EmbeddingProvider } from "../llm-provider.js";
+import type {
+  LLMProvider,
+  LLMResponse,
+  EmbeddingProvider,
+} from "../llm-provider.js";
 import type { McpClient } from "../mcp-client.js";
 import { SessionLock } from "../session-lock.js";
 import type { Server } from "node:http";
@@ -62,9 +66,13 @@ function createMockSupabase(config: {
         return {
           select: vi.fn(() => ({
             eq: vi.fn(() => ({
-              order: vi.fn(() => config.messagesResult ?? { data: [], error: null }),
+              order: vi.fn(
+                () => config.messagesResult ?? { data: [], error: null }
+              ),
             })),
-            order: vi.fn(() => config.messagesResult ?? { data: [], error: null }),
+            order: vi.fn(
+              () => config.messagesResult ?? { data: [], error: null }
+            ),
           })),
           insert: insertFn,
         };
@@ -73,7 +81,9 @@ function createMockSupabase(config: {
         return {
           select: vi.fn(() => ({
             eq: vi.fn(() => ({
-              single: vi.fn(() => config.sessionResult ?? { data: null, error: null }),
+              single: vi.fn(
+                () => config.sessionResult ?? { data: null, error: null }
+              ),
             })),
           })),
         };
@@ -121,14 +131,28 @@ describe("recoverUnanswered", () => {
     const supabase = createMockSupabase({
       rpcResult: {
         data: [
-          { session_id: "sess-1", user_id: "user-1", created_at: "2026-03-01T10:00:00Z" },
-          { session_id: "sess-2", user_id: "user-1", created_at: "2026-03-01T10:05:00Z" },
+          {
+            session_id: "sess-1",
+            user_id: "user-1",
+            created_at: "2026-03-01T10:00:00Z",
+          },
+          {
+            session_id: "sess-2",
+            user_id: "user-1",
+            created_at: "2026-03-01T10:05:00Z",
+          },
         ],
         error: null,
       },
       // processMessage needs session history + session metadata
-      messagesResult: { data: [{ role: "user", content: "hello" }], error: null },
-      sessionResult: { data: { title: "Test", user_id: "user-1" }, error: null },
+      messagesResult: {
+        data: [{ role: "user", content: "hello" }],
+        error: null,
+      },
+      sessionResult: {
+        data: { title: "Test", user_id: "user-1" },
+        error: null,
+      },
       insertFn,
     });
 
@@ -171,9 +195,21 @@ describe("recoverUnanswered", () => {
       // Fallback query returns messages ordered by created_at desc
       messagesResult: {
         data: [
-          { session_id: "sess-A", role: "user", created_at: "2026-03-01T12:00:00Z" },
-          { session_id: "sess-B", role: "assistant", created_at: "2026-03-01T11:00:00Z" },
-          { session_id: "sess-B", role: "user", created_at: "2026-03-01T10:00:00Z" },
+          {
+            session_id: "sess-A",
+            role: "user",
+            created_at: "2026-03-01T12:00:00Z",
+          },
+          {
+            session_id: "sess-B",
+            role: "assistant",
+            created_at: "2026-03-01T11:00:00Z",
+          },
+          {
+            session_id: "sess-B",
+            role: "user",
+            created_at: "2026-03-01T10:00:00Z",
+          },
         ],
         error: null,
       },
@@ -191,7 +227,7 @@ describe("recoverUnanswered", () => {
     // Only sess-A should be processed (sess-B latest is assistant)
     expect(llm.chat).toHaveBeenCalledTimes(1);
     expect(insertFn).toHaveBeenCalledWith(
-      expect.objectContaining({ session_id: "sess-A", role: "assistant" }),
+      expect.objectContaining({ session_id: "sess-A", role: "assistant" })
     );
   });
 });
@@ -223,7 +259,7 @@ describe("handleUserMessage", () => {
         session_id: "sess-1",
         role: "assistant",
         content: "Hello!",
-      }),
+      })
     );
   });
 
@@ -233,7 +269,11 @@ describe("handleUserMessage", () => {
       chat: vi.fn(async () => {
         callCount++;
         if (callCount === 1) throw new Error("Transient failure");
-        return { content: "Recovered!", tool_calls: [], finish_reason: "stop" as const };
+        return {
+          content: "Recovered!",
+          tool_calls: [],
+          finish_reason: "stop" as const,
+        };
       }),
     };
 
@@ -250,7 +290,7 @@ describe("handleUserMessage", () => {
     // LLM called twice (first fails, retry succeeds)
     expect(llm.chat).toHaveBeenCalledTimes(2);
     expect(insertFn).toHaveBeenCalledWith(
-      expect.objectContaining({ content: "Recovered!" }),
+      expect.objectContaining({ content: "Recovered!" })
     );
   });
 
@@ -280,7 +320,7 @@ describe("handleUserMessage", () => {
         session_id: "sess-1",
         role: "assistant",
         content: expect.stringContaining("error"),
-      }),
+      })
     );
   });
 });

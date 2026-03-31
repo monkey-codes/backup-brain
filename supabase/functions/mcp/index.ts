@@ -9,7 +9,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 const supabase: SupabaseClient = createClient(
   Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
 
 // ---------------------------------------------------------------------------
@@ -20,9 +20,10 @@ interface McpTool<S extends ZodRawShape = ZodRawShape> {
   name: string;
   description: string;
   schema: ZodObject<S>;
-  handler: (
-    args: z.infer<ZodObject<S>>,
-  ) => Promise<{ content: { type: "text"; text: string }[]; isError?: boolean }>;
+  handler: (args: z.infer<ZodObject<S>>) => Promise<{
+    content: { type: "text"; text: string }[];
+    isError?: boolean;
+  }>;
 }
 
 // deno-lint-ignore no-explicit-any
@@ -32,7 +33,7 @@ function tool<S extends ZodRawShape>(
   name: string,
   description: string,
   schema: ZodObject<S>,
-  handler: McpTool<S>["handler"],
+  handler: McpTool<S>["handler"]
 ) {
   tools.push({ name, description, schema, handler });
 }
@@ -43,7 +44,9 @@ function ok(data: unknown) {
 
 function err(message: string) {
   return {
-    content: [{ type: "text" as const, text: JSON.stringify({ error: message }) }],
+    content: [
+      { type: "text" as const, text: JSON.stringify({ error: message }) },
+    ],
     isError: true as const,
   };
 }
@@ -58,7 +61,10 @@ tool(
   "Create a thought with its decisions atomically. Returns the thought ID and decision IDs.",
   z.object({
     content: z.string().describe("The synthesized thought content"),
-    session_id: z.string().uuid().describe("Chat session ID that produced this thought"),
+    session_id: z
+      .string()
+      .uuid()
+      .describe("Chat session ID that produced this thought"),
     created_by: z.string().uuid().describe("User ID who created the thought"),
     embedding: z
       .array(z.number())
@@ -67,11 +73,18 @@ tool(
     decisions: z
       .array(
         z.object({
-          decision_type: z.enum(["classification", "entity", "reminder", "tag"]),
-          value: z.record(z.unknown()).describe("Decision value (shape depends on decision_type)"),
+          decision_type: z.enum([
+            "classification",
+            "entity",
+            "reminder",
+            "tag",
+          ]),
+          value: z
+            .record(z.unknown())
+            .describe("Decision value (shape depends on decision_type)"),
           confidence: z.number().min(0).max(1),
           reasoning: z.string(),
-        }),
+        })
       )
       .describe("Decisions to attach to the thought"),
   }),
@@ -115,7 +128,7 @@ tool(
     }
 
     return ok({ thought_id: thought.id, decisions: [] });
-  },
+  }
 );
 
 // 2. update_thought — modify content and optionally re-embed
@@ -149,7 +162,7 @@ tool(
 
     if (error) return err(error.message);
     return ok(data);
-  },
+  }
 );
 
 // 3. search_thoughts — semantic similarity search with pre-computed embedding
@@ -173,7 +186,7 @@ tool(
 
     if (error) return err(error.message);
     return ok(data);
-  },
+  }
 );
 
 // 4. list_thoughts — browse / filter thoughts
@@ -197,7 +210,7 @@ tool(
     const { data, error } = await query;
     if (error) return err(error.message);
     return ok(data);
-  },
+  }
 );
 
 // 5. create_decision — add a decision to an existing thought
@@ -207,7 +220,9 @@ tool(
   z.object({
     thought_id: z.string().uuid(),
     decision_type: z.enum(["classification", "entity", "reminder", "tag"]),
-    value: z.record(z.unknown()).describe("Decision value (shape depends on decision_type)"),
+    value: z
+      .record(z.unknown())
+      .describe("Decision value (shape depends on decision_type)"),
     confidence: z.number().min(0).max(1),
     reasoning: z.string(),
   }),
@@ -216,13 +231,13 @@ tool(
       .from("thought_decisions")
       .insert(args)
       .select(
-        "id, thought_id, decision_type, value, confidence, reasoning, review_status, created_at",
+        "id, thought_id, decision_type, value, confidence, reasoning, review_status, created_at"
       )
       .single();
 
     if (error) return err(error.message);
     return ok(data);
-  },
+  }
 );
 
 // 6. update_decision — accept or correct a decision
@@ -236,7 +251,11 @@ tool(
       .record(z.unknown())
       .optional()
       .describe("New value if correcting"),
-    corrected_by: z.string().uuid().optional().describe("User applying the correction"),
+    corrected_by: z
+      .string()
+      .uuid()
+      .optional()
+      .describe("User applying the correction"),
   }),
   async ({ decision_id, review_status, corrected_value, corrected_by }) => {
     const update: Record<string, unknown> = {};
@@ -252,13 +271,13 @@ tool(
       .update(update)
       .eq("id", decision_id)
       .select(
-        "id, thought_id, decision_type, value, confidence, reasoning, review_status, corrected_value, corrected_by, corrected_at",
+        "id, thought_id, decision_type, value, confidence, reasoning, review_status, corrected_value, corrected_by, corrected_at"
       )
       .single();
 
     if (error) return err(error.message);
     return ok(data);
-  },
+  }
 );
 
 // 7. list_decisions — query decisions with filters
@@ -267,17 +286,26 @@ tool(
   "Query decisions with optional filters for thought, type, status, and confidence range.",
   z.object({
     thought_id: z.string().uuid().optional(),
-    decision_type: z.enum(["classification", "entity", "reminder", "tag"]).optional(),
+    decision_type: z
+      .enum(["classification", "entity", "reminder", "tag"])
+      .optional(),
     review_status: z.enum(["pending", "accepted", "corrected"]).optional(),
     min_confidence: z.number().min(0).max(1).optional(),
     max_confidence: z.number().min(0).max(1).optional(),
     limit: z.number().int().min(1).max(100).default(20),
   }),
-  async ({ thought_id, decision_type, review_status, min_confidence, max_confidence, limit }) => {
+  async ({
+    thought_id,
+    decision_type,
+    review_status,
+    min_confidence,
+    max_confidence,
+    limit,
+  }) => {
     let query = supabase
       .from("thought_decisions")
       .select(
-        "id, thought_id, decision_type, value, confidence, reasoning, review_status, corrected_value, corrected_by, corrected_at, created_at",
+        "id, thought_id, decision_type, value, confidence, reasoning, review_status, corrected_value, corrected_by, corrected_at, created_at"
       )
       .order("created_at", { ascending: false })
       .limit(limit);
@@ -285,13 +313,15 @@ tool(
     if (thought_id) query = query.eq("thought_id", thought_id);
     if (decision_type) query = query.eq("decision_type", decision_type);
     if (review_status) query = query.eq("review_status", review_status);
-    if (min_confidence !== undefined) query = query.gte("confidence", min_confidence);
-    if (max_confidence !== undefined) query = query.lte("confidence", max_confidence);
+    if (min_confidence !== undefined)
+      query = query.gte("confidence", min_confidence);
+    if (max_confidence !== undefined)
+      query = query.lte("confidence", max_confidence);
 
     const { data, error } = await query;
     if (error) return err(error.message);
     return ok(data);
-  },
+  }
 );
 
 // 8. create_group — create a thought group and add members
@@ -301,7 +331,9 @@ tool(
   z.object({
     name: z.string(),
     description: z.string(),
-    thought_ids: z.array(z.string().uuid()).describe("Thought IDs to add to the group"),
+    thought_ids: z
+      .array(z.string().uuid())
+      .describe("Thought IDs to add to the group"),
   }),
   async ({ name, description, thought_ids }) => {
     const { data: group, error: gErr } = await supabase
@@ -330,7 +362,7 @@ tool(
     }
 
     return ok({ group_id: group.id, name, description, thought_ids });
-  },
+  }
 );
 
 // 9. create_notification — surface a notification to a user
@@ -342,19 +374,29 @@ tool(
     type: z.enum(["reminder", "suggestion", "insight"]),
     title: z.string(),
     body: z.string(),
-    thought_id: z.string().uuid().optional().describe("Related thought, if any"),
-    decision_id: z.string().uuid().optional().describe("Related decision, if any"),
+    thought_id: z
+      .string()
+      .uuid()
+      .optional()
+      .describe("Related thought, if any"),
+    decision_id: z
+      .string()
+      .uuid()
+      .optional()
+      .describe("Related decision, if any"),
   }),
   async (args) => {
     const { data, error } = await supabase
       .from("notifications")
       .insert(args)
-      .select("id, user_id, type, title, body, thought_id, decision_id, created_at")
+      .select(
+        "id, user_id, type, title, body, thought_id, decision_id, created_at"
+      )
       .single();
 
     if (error) return err(error.message);
     return ok(data);
-  },
+  }
 );
 
 // 10. set_session_title — update a chat session's title
@@ -375,7 +417,7 @@ tool(
 
     if (error) return err(error.message);
     return ok(data);
-  },
+  }
 );
 
 // ---------------------------------------------------------------------------
@@ -392,7 +434,7 @@ function jsonrpc(id: string | number | null, result: unknown): Response {
 function jsonrpcError(
   id: string | number | null,
   code: number,
-  message: string,
+  message: string
 ): Response {
   return Response.json({ jsonrpc: "2.0", id, error: { code, message } });
 }
@@ -441,7 +483,10 @@ async function handleJsonRpc(body: any): Promise<Response> {
       if (!parsed.success) {
         return jsonrpc(id, {
           content: [
-            { type: "text", text: JSON.stringify({ error: parsed.error.format() }) },
+            {
+              type: "text",
+              text: JSON.stringify({ error: parsed.error.format() }),
+            },
           ],
           isError: true,
         });
@@ -452,7 +497,9 @@ async function handleJsonRpc(body: any): Promise<Response> {
         return jsonrpc(id, result);
       } catch (error) {
         return jsonrpc(id, {
-          content: [{ type: "text", text: JSON.stringify({ error: String(error) }) }],
+          content: [
+            { type: "text", text: JSON.stringify({ error: String(error) }) },
+          ],
           isError: true,
         });
       }

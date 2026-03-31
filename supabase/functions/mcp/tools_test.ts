@@ -28,7 +28,7 @@ const MCP_URL = `${SUPABASE_URL}/functions/v1/mcp`;
 
 const supabase: SupabaseClient = createClient(
   SUPABASE_URL,
-  SUPABASE_SERVICE_ROLE_KEY,
+  SUPABASE_SERVICE_ROLE_KEY
 );
 
 // ---------------------------------------------------------------------------
@@ -85,7 +85,8 @@ async function setup() {
       password: "test-password-123",
       email_confirm: true,
     });
-  if (userErr) throw new Error(`Failed to create test user: ${userErr.message}`);
+  if (userErr)
+    throw new Error(`Failed to create test user: ${userErr.message}`);
   testUserId = userData.user!.id;
 
   // Create a test session
@@ -94,7 +95,8 @@ async function setup() {
     .insert({ user_id: testUserId, title: "MCP Test Session" })
     .select("id")
     .single();
-  if (sessErr) throw new Error(`Failed to create test session: ${sessErr.message}`);
+  if (sessErr)
+    throw new Error(`Failed to create test session: ${sessErr.message}`);
   testSessionId = session.id;
 }
 
@@ -127,16 +129,19 @@ Deno.test({
     try {
       // ---- Protocol tests ----
 
-      await t.step("initialize returns server info and capabilities", async () => {
-        const res = await mcpRequest("initialize", {
-          protocolVersion: "2025-03-26",
-          clientInfo: { name: "test", version: "1.0.0" },
-          capabilities: {},
-        });
-        const json = await res.json();
-        assertEquals(json.result.serverInfo.name, "backup-brain");
-        assertEquals(json.result.capabilities.tools !== undefined, true);
-      });
+      await t.step(
+        "initialize returns server info and capabilities",
+        async () => {
+          const res = await mcpRequest("initialize", {
+            protocolVersion: "2025-03-26",
+            clientInfo: { name: "test", version: "1.0.0" },
+            capabilities: {},
+          });
+          const json = await res.json();
+          assertEquals(json.result.serverInfo.name, "backup-brain");
+          assertEquals(json.result.capabilities.tools !== undefined, true);
+        }
+      );
 
       await t.step("notifications/initialized returns 202", async () => {
         const res = await mcpRequest("notifications/initialized");
@@ -166,7 +171,11 @@ Deno.test({
           "create_notification",
           "set_session_title",
         ]) {
-          assertEquals(names.includes(expected), true, `Missing tool: ${expected}`);
+          assertEquals(
+            names.includes(expected),
+            true,
+            `Missing tool: ${expected}`
+          );
         }
       });
 
@@ -175,64 +184,71 @@ Deno.test({
       let thoughtId: string;
       let decisionIds: string[];
 
-      await t.step("capture_thought creates thought + decisions atomically", async () => {
-        const { parsed, isError } = await callTool("capture_thought", {
-          content: "Need to call the plumber about the kitchen sink leak",
-          session_id: testSessionId,
-          created_by: testUserId,
-          embedding: dummyEmbedding(),
-          decisions: [
-            {
-              decision_type: "classification",
-              value: { category: "Home Maintenance" },
-              confidence: 0.92,
-              reasoning: "Relates to home repair task",
-            },
-            {
-              decision_type: "entity",
-              value: { name: "plumber", type: "person" },
-              confidence: 0.85,
-              reasoning: "Key person mentioned",
-            },
-            {
-              decision_type: "tag",
-              value: { label: "urgent" },
-              confidence: 0.7,
-              reasoning: "Leak implies urgency",
-            },
-          ],
-        });
+      await t.step(
+        "capture_thought creates thought + decisions atomically",
+        async () => {
+          const { parsed, isError } = await callTool("capture_thought", {
+            content: "Need to call the plumber about the kitchen sink leak",
+            session_id: testSessionId,
+            created_by: testUserId,
+            embedding: dummyEmbedding(),
+            decisions: [
+              {
+                decision_type: "classification",
+                value: { category: "Home Maintenance" },
+                confidence: 0.92,
+                reasoning: "Relates to home repair task",
+              },
+              {
+                decision_type: "entity",
+                value: { name: "plumber", type: "person" },
+                confidence: 0.85,
+                reasoning: "Key person mentioned",
+              },
+              {
+                decision_type: "tag",
+                value: { label: "urgent" },
+                confidence: 0.7,
+                reasoning: "Leak implies urgency",
+              },
+            ],
+          });
 
-        assertEquals(isError, undefined);
-        assertExists(parsed.thought_id);
-        assertEquals(parsed.decisions.length, 3);
+          assertEquals(isError, undefined);
+          assertExists(parsed.thought_id);
+          assertEquals(parsed.decisions.length, 3);
 
-        thoughtId = parsed.thought_id;
-        decisionIds = parsed.decisions.map((d: { id: string }) => d.id);
-        createdIds.thoughts.push(thoughtId);
+          thoughtId = parsed.thought_id;
+          decisionIds = parsed.decisions.map((d: { id: string }) => d.id);
+          createdIds.thoughts.push(thoughtId);
 
-        // Verify in database
-        const { data: dbThought } = await supabase
-          .from("thoughts")
-          .select("id, content")
-          .eq("id", thoughtId)
-          .single();
-        assertExists(dbThought);
-        assertEquals(dbThought.content, "Need to call the plumber about the kitchen sink leak");
+          // Verify in database
+          const { data: dbThought } = await supabase
+            .from("thoughts")
+            .select("id, content")
+            .eq("id", thoughtId)
+            .single();
+          assertExists(dbThought);
+          assertEquals(
+            dbThought.content,
+            "Need to call the plumber about the kitchen sink leak"
+          );
 
-        const { data: dbDecisions } = await supabase
-          .from("thought_decisions")
-          .select("id, decision_type")
-          .eq("thought_id", thoughtId);
-        assertEquals(dbDecisions!.length, 3);
-      });
+          const { data: dbDecisions } = await supabase
+            .from("thought_decisions")
+            .select("id, decision_type")
+            .eq("thought_id", thoughtId);
+          assertEquals(dbDecisions!.length, 3);
+        }
+      );
 
       // ---- update_thought ----
 
       await t.step("update_thought updates content", async () => {
         const { parsed, isError } = await callTool("update_thought", {
           thought_id: thoughtId,
-          content: "Call the plumber about kitchen sink — leak is getting worse",
+          content:
+            "Call the plumber about kitchen sink — leak is getting worse",
         });
 
         assertEquals(isError, undefined);
@@ -243,7 +259,10 @@ Deno.test({
           .select("content")
           .eq("id", thoughtId)
           .single();
-        assertEquals(data!.content, "Call the plumber about kitchen sink — leak is getting worse");
+        assertEquals(
+          data!.content,
+          "Call the plumber about kitchen sink — leak is getting worse"
+        );
       });
 
       // ---- list_thoughts ----
@@ -260,19 +279,22 @@ Deno.test({
 
       // ---- search_thoughts ----
 
-      await t.step("search_thoughts returns results with similarity", async () => {
-        const { parsed, isError } = await callTool("search_thoughts", {
-          embedding: dummyEmbedding(),
-          match_threshold: 0.0,
-          match_count: 5,
-        });
+      await t.step(
+        "search_thoughts returns results with similarity",
+        async () => {
+          const { parsed, isError } = await callTool("search_thoughts", {
+            embedding: dummyEmbedding(),
+            match_threshold: 0.0,
+            match_count: 5,
+          });
 
-        assertEquals(isError, undefined);
-        assertEquals(Array.isArray(parsed), true);
-        // Our thought should match itself (same embedding)
-        assertEquals(parsed.length >= 1, true);
-        assertExists(parsed[0].similarity);
-      });
+          assertEquals(isError, undefined);
+          assertEquals(Array.isArray(parsed), true);
+          // Our thought should match itself (same embedding)
+          assertEquals(parsed.length >= 1, true);
+          assertExists(parsed[0].similarity);
+        }
+      );
 
       // ---- create_decision ----
 
@@ -280,7 +302,10 @@ Deno.test({
         const { parsed, isError } = await callTool("create_decision", {
           thought_id: thoughtId,
           decision_type: "reminder",
-          value: { due_at: "2026-04-01T09:00:00Z", description: "Call the plumber" },
+          value: {
+            due_at: "2026-04-01T09:00:00Z",
+            description: "Call the plumber",
+          },
           confidence: 0.88,
           reasoning: "Time-sensitive action detected",
         });
@@ -387,14 +412,17 @@ Deno.test({
 
       // ---- Validation error ----
 
-      await t.step("tools/call returns validation error for bad input", async () => {
-        const { parsed, isError } = await callTool("capture_thought", {
-          content: 123, // should be string
-        });
+      await t.step(
+        "tools/call returns validation error for bad input",
+        async () => {
+          const { parsed, isError } = await callTool("capture_thought", {
+            content: 123, // should be string
+          });
 
-        assertEquals(isError, true);
-        assertExists(parsed.error);
-      });
+          assertEquals(isError, true);
+          assertExists(parsed.error);
+        }
+      );
 
       // ---- Unknown tool ----
 

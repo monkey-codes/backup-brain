@@ -59,7 +59,7 @@ function renderApp(initialRoute = "/") {
           </MemoryRouter>
         </SessionProvider>
       </AuthProvider>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
 }
 
@@ -121,7 +121,7 @@ describe("Auth flow", () => {
 
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent(
-        "Invalid login credentials",
+        "Invalid login credentials"
       );
     });
 

@@ -2,7 +2,11 @@ import { useState, useRef, useEffect, type FormEvent } from "react";
 import { Send, Loader2 } from "lucide-react";
 import type { ChatMessage } from "@backup-brain/shared";
 import { Button } from "@/components/ui/button";
-import { useMessages, useSendMessage, useIsThinking } from "@/hooks/use-messages";
+import {
+  useMessages,
+  useSendMessage,
+  useIsThinking,
+} from "@/hooks/use-messages";
 
 function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === "user";

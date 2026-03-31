@@ -1,5 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { LLMProvider, LLMMessage, ToolDefinition, EmbeddingProvider } from "./llm-provider.js";
+import type {
+  LLMProvider,
+  LLMMessage,
+  ToolDefinition,
+  EmbeddingProvider,
+} from "./llm-provider.js";
 import type { McpClient } from "./mcp-client.js";
 
 const MAX_TOOL_ROUNDS = 10;
@@ -112,28 +117,34 @@ export interface ProcessContext {
 
 export async function processMessage(ctx: ProcessContext): Promise<string> {
   // Load session history, session metadata, and past corrections in parallel
-  const [{ data: history }, { data: session }, correctionsResult] = await Promise.all([
-    ctx.supabase
-      .from("chat_messages")
-      .select("role, content")
-      .eq("session_id", ctx.sessionId)
-      .order("created_at", { ascending: true }),
-    ctx.supabase
-      .from("chat_sessions")
-      .select("title")
-      .eq("id", ctx.sessionId)
-      .single(),
-    ctx.mcp.callTool("list_decisions", { review_status: "corrected", limit: 50 }).catch(() => "[]"),
-  ]);
+  const [{ data: history }, { data: session }, correctionsResult] =
+    await Promise.all([
+      ctx.supabase
+        .from("chat_messages")
+        .select("role, content")
+        .eq("session_id", ctx.sessionId)
+        .order("created_at", { ascending: true }),
+      ctx.supabase
+        .from("chat_sessions")
+        .select("title")
+        .eq("id", ctx.sessionId)
+        .single(),
+      ctx.mcp
+        .callTool("list_decisions", { review_status: "corrected", limit: 50 })
+        .catch(() => "[]"),
+    ]);
 
   // Build corrections context from past user corrections
   let correctionsContext = "";
   try {
     const corrections = JSON.parse(correctionsResult);
     if (Array.isArray(corrections) && corrections.length > 0) {
-      const formatted = corrections.map((c: Record<string, unknown>) =>
-        `- [${c.decision_type}] Original: ${JSON.stringify(c.value)} → Corrected: ${JSON.stringify(c.corrected_value)} (reasoning was: "${c.reasoning}")`
-      ).join("\n");
+      const formatted = corrections
+        .map(
+          (c: Record<string, unknown>) =>
+            `- [${c.decision_type}] Original: ${JSON.stringify(c.value)} → Corrected: ${JSON.stringify(c.corrected_value)} (reasoning was: "${c.reasoning}")`
+        )
+        .join("\n");
       correctionsContext = `\n\n## Past corrections\n\nThe following decisions were corrected by the user. Learn from these to avoid repeating the same mistakes:\n\n${formatted}`;
     }
   } catch {
@@ -147,7 +158,10 @@ export async function processMessage(ctx: ProcessContext): Promise<string> {
     : `\n\n## Current session\n\nSession ID: ${ctx.sessionId}\nSession title: (none)\n\nThis session has no title yet. Call \`set_session_title\` with a short, descriptive title based on the conversation content.`;
 
   const messages: LLMMessage[] = [
-    { role: "system", content: ctx.systemPrompt + correctionsContext + sessionContext },
+    {
+      role: "system",
+      content: ctx.systemPrompt + correctionsContext + sessionContext,
+    },
     ...(history ?? []).map((m: { role: string; content: string }) => ({
       role: m.role as "user" | "assistant",
       content: m.content,

@@ -31,7 +31,11 @@ function SessionItem({
   );
 }
 
-export function SessionList({ onSessionSelect }: { onSessionSelect?: () => void }) {
+export function SessionList({
+  onSessionSelect,
+}: {
+  onSessionSelect?: () => void;
+}) {
   const { data: sessions, isLoading } = useSessions();
   const createSession = useCreateSession();
   const { currentSession, setCurrentSession } = useCurrentSession();

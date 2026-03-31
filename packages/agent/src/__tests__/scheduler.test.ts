@@ -20,7 +20,9 @@ function createMockSupabase(config: {
         return {
           select: vi.fn(() => ({
             eq: vi.fn(() => ({
-              lte: vi.fn(() => config.decisionsResult ?? { data: [], error: null }),
+              lte: vi.fn(
+                () => config.decisionsResult ?? { data: [], error: null }
+              ),
             })),
           })),
         };
@@ -28,7 +30,10 @@ function createMockSupabase(config: {
       if (table === "notifications") {
         return {
           select: vi.fn(() => ({
-            in: vi.fn(() => config.notificationsSelectResult ?? { data: [], error: null }),
+            in: vi.fn(
+              () =>
+                config.notificationsSelectResult ?? { data: [], error: null }
+            ),
           })),
           insert: insertFn,
         };
@@ -130,7 +135,7 @@ describe("checkReminders", () => {
       expect.arrayContaining([
         expect.objectContaining({ decision_id: "dec-1" }),
         expect.objectContaining({ decision_id: "dec-2" }),
-      ]),
+      ])
     );
   });
 
@@ -148,7 +153,11 @@ describe("checkReminders", () => {
             value: { due_at: pastDate, description: "Overdue task" },
             corrected_value: null,
             review_status: "pending",
-            thoughts: { id: "thought-1", content: "Do something important", created_by: "user-1" },
+            thoughts: {
+              id: "thought-1",
+              content: "Do something important",
+              created_by: "user-1",
+            },
           },
         ],
         error: null,
@@ -184,12 +193,19 @@ describe("checkReminders", () => {
             value: { due_at: pastDate, description: "Already notified" },
             corrected_value: null,
             review_status: "pending",
-            thoughts: { id: "thought-1", content: "Something", created_by: "user-1" },
+            thoughts: {
+              id: "thought-1",
+              content: "Something",
+              created_by: "user-1",
+            },
           },
         ],
         error: null,
       },
-      notificationsSelectResult: { data: [{ decision_id: "dec-1" }], error: null },
+      notificationsSelectResult: {
+        data: [{ decision_id: "dec-1" }],
+        error: null,
+      },
       insertFn,
     });
 
@@ -210,10 +226,20 @@ describe("checkReminders", () => {
           {
             id: "dec-1",
             thought_id: "thought-1",
-            value: { due_at: "2099-01-01T00:00:00Z", description: "Original description" },
-            corrected_value: { due_at: pastDate, description: "Corrected description" },
+            value: {
+              due_at: "2099-01-01T00:00:00Z",
+              description: "Original description",
+            },
+            corrected_value: {
+              due_at: pastDate,
+              description: "Corrected description",
+            },
             review_status: "corrected",
-            thoughts: { id: "thought-1", content: "Something", created_by: "user-1" },
+            thoughts: {
+              id: "thought-1",
+              content: "Something",
+              created_by: "user-1",
+            },
           },
         ],
         error: null,
@@ -233,7 +259,9 @@ describe("checkReminders", () => {
   });
 
   it("returns 0 when insert fails", async () => {
-    const insertFn = vi.fn(async () => ({ error: { message: "insert failed" } }));
+    const insertFn = vi.fn(async () => ({
+      error: { message: "insert failed" },
+    }));
 
     const supabase = createMockSupabase({
       rpcResult: {

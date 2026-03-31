@@ -71,7 +71,7 @@ function typeBadge(type: DecisionType) {
 
 function extractFormFields(
   type: DecisionType,
-  value: DecisionValue,
+  value: DecisionValue
 ): Record<string, string> {
   const v = value as unknown as Record<string, string>;
   switch (type) {
@@ -99,8 +99,8 @@ function CorrectionForm({
   onCancel: () => void;
   isPending: boolean;
 }) {
-  const [formValue, setFormValue] = useState<Record<string, string>>(
-    () => extractFormFields(decision.decision_type, decision.value),
+  const [formValue, setFormValue] = useState<Record<string, string>>(() =>
+    extractFormFields(decision.decision_type, decision.value)
   );
 
   const handleChange = (key: string, val: string) => {
@@ -188,10 +188,7 @@ function DecisionCard({
       {decision.corrected_value && (
         <p className="mt-1 text-xs text-blue-600">
           Corrected to:{" "}
-          {formatValue(
-            decision.decision_type,
-            decision.corrected_value,
-          )}
+          {formatValue(decision.decision_type, decision.corrected_value)}
         </p>
       )}
 
@@ -239,11 +236,7 @@ function DecisionCard({
   );
 }
 
-export function DecisionReviewView({
-  onBack,
-}: {
-  onBack: () => void;
-}) {
+export function DecisionReviewView({ onBack }: { onBack: () => void }) {
   const { user } = useAuth();
   const [filter, setFilter] = useState<DecisionFilter>("needs_review");
   const { data: decisions, isLoading } = useDecisions(filter);

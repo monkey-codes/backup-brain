@@ -40,7 +40,7 @@ function createMockMcp(results: Record<string, string>): McpClient {
 function getToolCalls(mcp: McpClient): any[][] {
   return (mcp.callTool as ReturnType<typeof vi.fn>).mock.calls.filter(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (c: any[]) => c[0] !== "list_decisions",
+    (c: any[]) => c[0] !== "list_decisions"
   );
 }
 
@@ -187,7 +187,7 @@ describe("Reminder detection", () => {
             content: "I need to submit the tax return by April 15th",
           },
         ]),
-      }),
+      })
     );
 
     expect(result).toContain("tax return");
@@ -198,7 +198,7 @@ describe("Reminder detection", () => {
 
     const decisions = callArgs[1].decisions;
     const reminder = decisions.find(
-      (d: { decision_type: string }) => d.decision_type === "reminder",
+      (d: { decision_type: string }) => d.decision_type === "reminder"
     );
     expect(reminder).toBeDefined();
     expect(reminder.value.due_at).toBe("2026-04-15T09:00:00Z");
@@ -264,18 +264,21 @@ describe("Reminder detection", () => {
     const callArgs = getToolCalls(mcp)[0];
     const decisions = callArgs[1].decisions;
     const reminder = decisions.find(
-      (d: { decision_type: string }) => d.decision_type === "reminder",
+      (d: { decision_type: string }) => d.decision_type === "reminder"
     );
 
     expect(reminder).toBeDefined();
-    expect(reminder.value.due_at).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+    expect(reminder.value.due_at).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/
+    );
     expect(reminder.value.description).toContain("Dentist");
     expect(reminder.confidence).toBeGreaterThanOrEqual(0.8);
   });
 
   it("creates a reminder decision for follow-up tasks", async () => {
     const captureArgs = {
-      content: "Call the plumber back about the kitchen leak — follow up in 3 days",
+      content:
+        "Call the plumber back about the kitchen leak — follow up in 3 days",
       decisions: [
         {
           decision_type: "classification",
@@ -326,7 +329,7 @@ describe("Reminder detection", () => {
     const callArgs = getToolCalls(mcp)[0];
     const decisions = callArgs[1].decisions;
     const reminder = decisions.find(
-      (d: { decision_type: string }) => d.decision_type === "reminder",
+      (d: { decision_type: string }) => d.decision_type === "reminder"
     );
 
     expect(reminder).toBeDefined();
@@ -398,7 +401,8 @@ describe("Reminder detection", () => {
         finish_reason: "tool_calls",
       },
       {
-        content: "Noted! I've set a reminder for your meeting with Sarah on April 1st.",
+        content:
+          "Noted! I've set a reminder for your meeting with Sarah on April 1st.",
         tool_calls: [],
         finish_reason: "stop",
       },
@@ -415,7 +419,7 @@ describe("Reminder detection", () => {
 
     // Verify all decision types present
     const types = decisions.map(
-      (d: { decision_type: string }) => d.decision_type,
+      (d: { decision_type: string }) => d.decision_type
     );
     expect(types).toContain("classification");
     expect(types).toContain("entity");
@@ -424,7 +428,7 @@ describe("Reminder detection", () => {
 
     // Verify reminder specifics
     const reminder = decisions.find(
-      (d: { decision_type: string }) => d.decision_type === "reminder",
+      (d: { decision_type: string }) => d.decision_type === "reminder"
     );
     expect(reminder.value.due_at).toBe("2026-04-01T09:00:00Z");
     expect(reminder.confidence).toBeGreaterThanOrEqual(0.9);
@@ -461,7 +465,8 @@ describe("Reminder detection", () => {
         finish_reason: "tool_calls",
       },
       {
-        content: "I've added a reminder for your car insurance renewal on April 10th.",
+        content:
+          "I've added a reminder for your car insurance renewal on April 10th.",
         tool_calls: [],
         finish_reason: "stop",
       },
@@ -485,7 +490,7 @@ describe("Reminder detection", () => {
               "Oh and that car insurance thing — it expires April 10th, don't let me forget",
           },
         ]),
-      }),
+      })
     );
 
     expect(result).toContain("insurance");

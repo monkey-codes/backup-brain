@@ -1,6 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { processMessage, rewriteToolsForLLM, type ProcessContext } from "../react-loop.js";
-import type { LLMProvider, LLMResponse, LLMMessage, ToolDefinition, EmbeddingProvider } from "../llm-provider.js";
+import {
+  processMessage,
+  rewriteToolsForLLM,
+  type ProcessContext,
+} from "../react-loop.js";
+import type {
+  LLMProvider,
+  LLMResponse,
+  LLMMessage,
+  ToolDefinition,
+  EmbeddingProvider,
+} from "../llm-provider.js";
 import type { McpClient } from "../mcp-client.js";
 
 // ---------------------------------------------------------------------------
@@ -33,7 +43,7 @@ function createMockMcp(results: Record<string, string>): McpClient {
 
 function createMockSupabase(
   messages: { role: string; content: string }[],
-  sessionTitle: string | null = null,
+  sessionTitle: string | null = null
 ) {
   return {
     from: vi.fn((table: string) => {
@@ -92,7 +102,11 @@ const TOOLS: ToolDefinition[] = [
 describe("processMessage (ReAct loop)", () => {
   it("returns a direct response when LLM doesn't call tools", async () => {
     const llm = createMockLLM([
-      { content: "Hello! How can I help?", tool_calls: [], finish_reason: "stop" },
+      {
+        content: "Hello! How can I help?",
+        tool_calls: [],
+        finish_reason: "stop",
+      },
     ]);
     const mcp = createMockMcp({});
     const supabase = createMockSupabase([{ role: "user", content: "Hi" }]);
@@ -112,7 +126,10 @@ describe("processMessage (ReAct loop)", () => {
     expect(llm.chat).toHaveBeenCalledTimes(1);
     // Only list_decisions is called (for corrections fetch), no user-triggered tool calls
     expect(mcp.callTool).toHaveBeenCalledTimes(1);
-    expect(mcp.callTool).toHaveBeenCalledWith("list_decisions", { review_status: "corrected", limit: 50 });
+    expect(mcp.callTool).toHaveBeenCalledWith("list_decisions", {
+      review_status: "corrected",
+      limit: 50,
+    });
   });
 
   it("executes tool calls and returns final response", async () => {
@@ -124,7 +141,9 @@ describe("processMessage (ReAct loop)", () => {
           {
             id: "call_1",
             name: "capture_thought",
-            arguments: JSON.stringify({ content: "User wants to fix the roof" }),
+            arguments: JSON.stringify({
+              content: "User wants to fix the roof",
+            }),
           },
         ],
         finish_reason: "tool_calls",
@@ -156,7 +175,9 @@ describe("processMessage (ReAct loop)", () => {
       embedding: createMockEmbedding(),
     });
 
-    expect(result).toBe("Got it! I've captured your thought about fixing the roof.");
+    expect(result).toBe(
+      "Got it! I've captured your thought about fixing the roof."
+    );
     expect(llm.chat).toHaveBeenCalledTimes(2);
     expect(mcp.callTool).toHaveBeenCalledWith(
       "capture_thought",
@@ -165,7 +186,7 @@ describe("processMessage (ReAct loop)", () => {
         session_id: "sess-1",
         created_by: "user-1",
         embedding: expect.any(Array),
-      }),
+      })
     );
   });
 
@@ -201,7 +222,10 @@ describe("processMessage (ReAct loop)", () => {
 
     const mcp = createMockMcp({
       capture_thought: JSON.stringify({ thought_id: "t-1" }),
-      set_session_title: JSON.stringify({ id: "sess-1", title: "Home Maintenance" }),
+      set_session_title: JSON.stringify({
+        id: "sess-1",
+        title: "Home Maintenance",
+      }),
     });
 
     const supabase = createMockSupabase([
@@ -227,14 +251,18 @@ describe("processMessage (ReAct loop)", () => {
   it("handles tool errors gracefully", async () => {
     const mcp = createMockMcp({});
     (mcp.callTool as ReturnType<typeof vi.fn>).mockRejectedValue(
-      new Error("Tool failed"),
+      new Error("Tool failed")
     );
 
     const llm = createMockLLM([
       {
         content: null,
         tool_calls: [
-          { id: "call_1", name: "capture_thought", arguments: '{"content":"x"}' },
+          {
+            id: "call_1",
+            name: "capture_thought",
+            arguments: '{"content":"x"}',
+          },
         ],
         finish_reason: "tool_calls",
       },
@@ -261,9 +289,10 @@ describe("processMessage (ReAct loop)", () => {
     expect(result).toBe("Sorry, there was an issue saving that.");
 
     // Verify error was passed back to LLM
-    const secondCallMessages = (llm.chat as ReturnType<typeof vi.fn>).mock.calls[1][0];
+    const secondCallMessages = (llm.chat as ReturnType<typeof vi.fn>).mock
+      .calls[1][0];
     const toolResultMsg = secondCallMessages.find(
-      (m: LLMMessage) => m.role === "tool",
+      (m: LLMMessage) => m.role === "tool"
     );
     expect(toolResultMsg.content).toContain("Tool failed");
   });
@@ -310,7 +339,7 @@ describe("processMessage (ReAct loop)", () => {
       expect.objectContaining({
         session_id: "sess-abc",
         created_by: "user-xyz",
-      }),
+      })
     );
   });
 
@@ -331,10 +360,15 @@ describe("processMessage (ReAct loop)", () => {
     ]);
 
     const mcp = createMockMcp({
-      set_session_title: JSON.stringify({ id: "sess-abc", title: "Roof repairs" }),
+      set_session_title: JSON.stringify({
+        id: "sess-abc",
+        title: "Roof repairs",
+      }),
     });
 
-    const supabase = createMockSupabase([{ role: "user", content: "Fix the roof" }]);
+    const supabase = createMockSupabase([
+      { role: "user", content: "Fix the roof" },
+    ]);
 
     await processMessage({
       sessionId: "sess-abc",
@@ -352,7 +386,7 @@ describe("processMessage (ReAct loop)", () => {
       expect.objectContaining({
         session_id: "sess-abc",
         title: "Roof repairs",
-      }),
+      })
     );
   });
 
@@ -361,7 +395,10 @@ describe("processMessage (ReAct loop)", () => {
       { content: "Hello!", tool_calls: [], finish_reason: "stop" },
     ]);
     const mcp = createMockMcp({});
-    const supabase = createMockSupabase([{ role: "user", content: "Hi" }], null);
+    const supabase = createMockSupabase(
+      [{ role: "user", content: "Hi" }],
+      null
+    );
 
     await processMessage({
       sessionId: "sess-1",
@@ -374,7 +411,8 @@ describe("processMessage (ReAct loop)", () => {
       embedding: createMockEmbedding(),
     });
 
-    const systemMsg = (llm.chat as ReturnType<typeof vi.fn>).mock.calls[0][0][0];
+    const systemMsg = (llm.chat as ReturnType<typeof vi.fn>).mock
+      .calls[0][0][0];
     expect(systemMsg.content).toContain("Session title: (none)");
     expect(systemMsg.content).toContain("set_session_title");
   });
@@ -386,7 +424,7 @@ describe("processMessage (ReAct loop)", () => {
     const mcp = createMockMcp({});
     const supabase = createMockSupabase(
       [{ role: "user", content: "Hi" }],
-      "Existing Title",
+      "Existing Title"
     );
 
     await processMessage({
@@ -400,7 +438,8 @@ describe("processMessage (ReAct loop)", () => {
       embedding: createMockEmbedding(),
     });
 
-    const systemMsg = (llm.chat as ReturnType<typeof vi.fn>).mock.calls[0][0][0];
+    const systemMsg = (llm.chat as ReturnType<typeof vi.fn>).mock
+      .calls[0][0][0];
     expect(systemMsg.content).toContain('"Existing Title"');
     expect(systemMsg.content).toContain("do not call `set_session_title`");
   });
@@ -409,9 +448,7 @@ describe("processMessage (ReAct loop)", () => {
     // LLM always wants to call tools — should hit the 10-round limit
     const toolResponse: LLMResponse = {
       content: null,
-      tool_calls: [
-        { id: "call_x", name: "list_thoughts", arguments: "{}" },
-      ],
+      tool_calls: [{ id: "call_x", name: "list_thoughts", arguments: "{}" }],
       finish_reason: "tool_calls",
     };
 
@@ -482,10 +519,11 @@ describe("processMessage (ReAct loop)", () => {
       "search_thoughts",
       expect.objectContaining({
         embedding: expect.any(Array),
-      }),
+      })
     );
     // query param should be removed before calling MCP
-    const callArgs = (mcp.callTool as ReturnType<typeof vi.fn>).mock.calls[0][1];
+    const callArgs = (mcp.callTool as ReturnType<typeof vi.fn>).mock
+      .calls[0][1];
     expect(callArgs.query).toBeUndefined();
   });
 
@@ -506,7 +544,11 @@ describe("processMessage (ReAct loop)", () => {
         ],
         finish_reason: "tool_calls",
       },
-      { content: "Here's what I found.", tool_calls: [], finish_reason: "stop" },
+      {
+        content: "Here's what I found.",
+        tool_calls: [],
+        finish_reason: "stop",
+      },
     ]);
 
     const mcp = createMockMcp({ search_thoughts: "[]" });
@@ -529,7 +571,7 @@ describe("processMessage (ReAct loop)", () => {
         embedding: expect.any(Array),
         match_threshold: 0.7,
         match_count: 5,
-      }),
+      })
     );
   });
 });
@@ -563,7 +605,9 @@ describe("learning from corrections", () => {
       { content: "Got it!", tool_calls: [], finish_reason: "stop" },
     ]);
 
-    const supabase = createMockSupabase([{ role: "user", content: "Fix the fence" }]);
+    const supabase = createMockSupabase([
+      { role: "user", content: "Fix the fence" },
+    ]);
 
     await processMessage({
       sessionId: "sess-1",
@@ -577,13 +621,14 @@ describe("learning from corrections", () => {
     });
 
     // Verify list_decisions was called with corrected filter
-    expect(mcp.callTool).toHaveBeenCalledWith(
-      "list_decisions",
-      { review_status: "corrected", limit: 50 },
-    );
+    expect(mcp.callTool).toHaveBeenCalledWith("list_decisions", {
+      review_status: "corrected",
+      limit: 50,
+    });
 
     // Verify corrections appear in the system prompt
-    const systemMsg = (llm.chat as ReturnType<typeof vi.fn>).mock.calls[0][0][0];
+    const systemMsg = (llm.chat as ReturnType<typeof vi.fn>).mock
+      .calls[0][0][0];
     expect(systemMsg.content).toContain("Past corrections");
     expect(systemMsg.content).toContain("Business Ideas");
     expect(systemMsg.content).toContain("Home Maintenance");
@@ -614,7 +659,8 @@ describe("learning from corrections", () => {
       embedding: createMockEmbedding(),
     });
 
-    const systemMsg = (llm.chat as ReturnType<typeof vi.fn>).mock.calls[0][0][0];
+    const systemMsg = (llm.chat as ReturnType<typeof vi.fn>).mock
+      .calls[0][0][0];
     expect(systemMsg.content).not.toContain("Past corrections");
   });
 
@@ -624,7 +670,7 @@ describe("learning from corrections", () => {
       async (name: string) => {
         if (name === "list_decisions") throw new Error("MCP unavailable");
         return "{}";
-      },
+      }
     );
 
     const llm = createMockLLM([
@@ -646,7 +692,8 @@ describe("learning from corrections", () => {
 
     // Should still work — corrections are optional
     expect(result).toBe("Hello!");
-    const systemMsg = (llm.chat as ReturnType<typeof vi.fn>).mock.calls[0][0][0];
+    const systemMsg = (llm.chat as ReturnType<typeof vi.fn>).mock
+      .calls[0][0][0];
     expect(systemMsg.content).not.toContain("Past corrections");
   });
 
@@ -672,7 +719,7 @@ describe("learning from corrections", () => {
 
     const supabase = createMockSupabase(
       [{ role: "user", content: "test" }],
-      "My Session",
+      "My Session"
     );
 
     await processMessage({
@@ -686,7 +733,8 @@ describe("learning from corrections", () => {
       embedding: createMockEmbedding(),
     });
 
-    const systemMsg = (llm.chat as ReturnType<typeof vi.fn>).mock.calls[0][0][0];
+    const systemMsg = (llm.chat as ReturnType<typeof vi.fn>).mock
+      .calls[0][0][0];
     const correctionsIdx = systemMsg.content.indexOf("Past corrections");
     const sessionIdx = systemMsg.content.indexOf("Current session");
     expect(correctionsIdx).toBeGreaterThan(-1);
@@ -701,7 +749,8 @@ describe("rewriteToolsForLLM", () => {
     const mcpTools: ToolDefinition[] = [
       {
         name: "search_thoughts",
-        description: "Search thoughts by semantic similarity using a pre-computed embedding vector.",
+        description:
+          "Search thoughts by semantic similarity using a pre-computed embedding vector.",
         parameters: {
           type: "object",
           properties: {
@@ -715,7 +764,10 @@ describe("rewriteToolsForLLM", () => {
       {
         name: "capture_thought",
         description: "Create a thought",
-        parameters: { type: "object", properties: { content: { type: "string" } } },
+        parameters: {
+          type: "object",
+          properties: { content: { type: "string" } },
+        },
       },
     ];
 
@@ -723,14 +775,18 @@ describe("rewriteToolsForLLM", () => {
 
     // search_thoughts should have query instead of embedding
     const searchTool = rewritten.find((t) => t.name === "search_thoughts")!;
-    const props = (searchTool.parameters as Record<string, unknown>).properties as Record<string, unknown>;
+    const props = (searchTool.parameters as Record<string, unknown>)
+      .properties as Record<string, unknown>;
     expect(props.query).toBeDefined();
     expect(props.embedding).toBeUndefined();
-    expect(((searchTool.parameters as Record<string, unknown>).required as string[])).toContain("query");
+    expect(
+      (searchTool.parameters as Record<string, unknown>).required as string[]
+    ).toContain("query");
 
     // capture_thought should be rewritten to hide embedding/session_id/created_by
     const captureTool = rewritten.find((t) => t.name === "capture_thought")!;
-    const captureProps = (captureTool.parameters as Record<string, unknown>).properties as Record<string, unknown>;
+    const captureProps = (captureTool.parameters as Record<string, unknown>)
+      .properties as Record<string, unknown>;
     expect(captureProps.content).toBeDefined();
     expect(captureProps.decisions).toBeDefined();
     expect(captureProps.embedding).toBeUndefined();
@@ -739,7 +795,10 @@ describe("rewriteToolsForLLM", () => {
 
     // Non-rewritten tools should pass through as-is
     const otherTools = rewritten.filter(
-      (t) => !["search_thoughts", "capture_thought", "set_session_title"].includes(t.name),
+      (t) =>
+        !["search_thoughts", "capture_thought", "set_session_title"].includes(
+          t.name
+        )
     );
     expect(otherTools).toHaveLength(0); // Only search_thoughts and capture_thought in fixture
   });
