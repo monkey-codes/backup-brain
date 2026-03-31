@@ -85,10 +85,11 @@ describe("Auth flow", () => {
 
     renderApp("/");
 
+    // The shell renders with top app bar and bottom nav
     await waitFor(() => {
-      expect(screen.getByText("test@example.com")).toBeInTheDocument();
+      expect(screen.getByTestId("top-app-bar")).toBeInTheDocument();
     });
-    expect(screen.getByText("Sign out")).toBeInTheDocument();
+    expect(screen.getByTestId("bottom-nav")).toBeInTheDocument();
   });
 
   it("shows login form fields", async () => {
@@ -186,11 +187,18 @@ describe("Auth flow", () => {
     const user = userEvent.setup();
     renderApp("/");
 
+    // Open the drawer to access sign out
     await waitFor(() => {
-      expect(screen.getByText("Sign out")).toBeInTheDocument();
+      expect(screen.getByTestId("menu-button")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText("Sign out"));
+    await user.click(screen.getByTestId("menu-button"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("drawer-sign-out")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId("drawer-sign-out"));
 
     await waitFor(() => {
       expect(screen.getByText("Sign in to your account")).toBeInTheDocument();
