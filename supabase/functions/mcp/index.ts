@@ -240,10 +240,10 @@ tool(
   }
 );
 
-// 6. update_decision — accept or correct a decision
+// 6. update_decision — accept, correct, or patch a decision's value
 tool(
   "update_decision",
-  "Update a decision's review status or apply a correction.",
+  "Update a decision's review status, apply a correction, or patch the value directly. Use `value` for user-initiated changes (e.g. rescheduling a reminder) — it shallow-merges into the existing value without affecting review_status. Use `corrected_value` + `review_status: corrected` for agent corrections.",
   z.object({
     decision_id: z.string().uuid(),
     review_status: z.enum(["pending", "accepted", "corrected"]).optional(),
@@ -256,14 +256,40 @@ tool(
       .uuid()
       .optional()
       .describe("User applying the correction"),
+    value: z
+      .record(z.unknown())
+      .optional()
+      .describe(
+        "Partial JSON patch to shallow-merge into the existing value column (e.g. update due_at without losing description)"
+      ),
   }),
-  async ({ decision_id, review_status, corrected_value, corrected_by }) => {
+  async ({
+    decision_id,
+    review_status,
+    corrected_value,
+    corrected_by,
+    value,
+  }) => {
     const update: Record<string, unknown> = {};
     if (review_status !== undefined) update.review_status = review_status;
     if (corrected_value !== undefined) update.corrected_value = corrected_value;
     if (corrected_by !== undefined) {
       update.corrected_by = corrected_by;
       update.corrected_at = new Date().toISOString();
+    }
+
+    // Shallow-merge value patch: read current value, spread patch on top
+    if (value !== undefined) {
+      const { data: current, error: fetchErr } = await supabase
+        .from("thought_decisions")
+        .select("value")
+        .eq("id", decision_id)
+        .single();
+      if (fetchErr) return err(fetchErr.message);
+      update.value = {
+        ...(current.value as Record<string, unknown>),
+        ...value,
+      };
     }
 
     const { data, error } = await supabase
