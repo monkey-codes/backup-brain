@@ -30,7 +30,7 @@ tasks:
     desc: Start agent in watch mode
     dir: packages/agent
     cmds:
-      - pnpm run dev
+      - node --env-file=../../.env --import tsx --watch src/index.ts
 
   lint:
     desc: Lint all packages
@@ -59,6 +59,33 @@ tasks:
     dir: supabase/functions
     cmds:
       - deno test --no-check --no-lock --allow-net --allow-env mcp/tools_test.ts
+
+  env:
+    desc: Write .env from local Supabase status (preserves OPENAI_API_KEY)
+    cmds:
+      - |
+        OPENAI=""
+        if [ -f .env ]; then
+          OPENAI=$(grep '^OPENAI_API_KEY=' .env | head -1 | cut -d= -f2-)
+        fi
+        STATUS=$(supabase status -o yaml 2>/dev/null) || { echo "Supabase is not running. Run 'task db:start' first."; exit 1; }
+        URL=$(echo "$STATUS" | grep '^API_URL:' | awk '{print $2}')
+        SRK=$(echo "$STATUS" | grep '^SERVICE_ROLE_KEY:' | awk '{print $2}')
+        ANON=$(echo "$STATUS" | grep '^ANON_KEY:' | awk '{print $2}')
+        cat > .env <<EOF
+        SUPABASE_URL=$URL
+        SUPABASE_SERVICE_ROLE_KEY=$SRK
+        VITE_SUPABASE_URL=$URL
+        VITE_SUPABASE_ANON_KEY=$ANON
+        OPENAI_API_KEY=${OPENAI:-your-openai-api-key-here}
+        EOF
+        sed -i '' 's/^[[:space:]]*//' .env
+        echo "Wrote .env with keys from local Supabase"
+
+  db:dashboard:
+    desc: Open Supabase Studio dashboard in browser
+    cmds:
+      - open http://localhost:54323/
 
   db:start:
     desc: Start local Supabase
