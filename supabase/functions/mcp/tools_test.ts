@@ -476,6 +476,131 @@ Deno.test({
         }
       );
 
+      // ---- Cross-session reminder rescheduling (end-to-end) ----
+
+      await t.step(
+        "cross-session reminder rescheduling: capture, search, update, verify",
+        async () => {
+          // 1. Create a second session (simulating a different chat session)
+          const { data: session2, error: sess2Err } = await supabase
+            .from("chat_sessions")
+            .insert({ user_id: testUserId, title: "Second Session" })
+            .select("id")
+            .single();
+          if (sess2Err)
+            throw new Error(
+              `Failed to create second session: ${sess2Err.message}`
+            );
+
+          // 2. Capture a thought with a reminder decision in the FIRST session
+          const originalDueAt = "2026-06-15T09:00:00Z";
+          const { parsed: captured } = await callTool("capture_thought", {
+            content: "Dentist appointment next month",
+            session_id: testSessionId,
+            created_by: testUserId,
+            embedding: dummyEmbedding(),
+            decisions: [
+              {
+                decision_type: "reminder",
+                value: {
+                  due_at: originalDueAt,
+                  description: "Dentist appointment",
+                },
+                confidence: 0.95,
+                reasoning: "User mentioned a future appointment",
+              },
+            ],
+          });
+          assertExists(captured.thought_id);
+          assertEquals(captured.decisions.length, 1);
+          assertEquals(captured.decisions[0].decision_type, "reminder");
+          const reminderDecisionId = captured.decisions[0].id;
+          createdIds.thoughts.push(captured.thought_id);
+
+          // 3. From the "second session", search for the thought with include_decisions
+          const { parsed: searchResults } = await callTool("search_thoughts", {
+            embedding: dummyEmbedding(),
+            match_threshold: 0.0,
+            match_count: 50,
+            include_decisions: true,
+          });
+
+          const foundThought = searchResults.find(
+            (t: { id: string }) => t.id === captured.thought_id
+          );
+          assertExists(foundThought, "Should find the thought via search");
+          assertExists(foundThought.decisions, "Should have nested decisions");
+
+          const foundReminder = foundThought.decisions.find(
+            (d: { decision_type: string }) => d.decision_type === "reminder"
+          );
+          assertExists(
+            foundReminder,
+            "Should find reminder decision in nested results"
+          );
+          assertEquals(foundReminder.id, reminderDecisionId);
+          assertEquals(foundReminder.value.due_at, originalDueAt);
+          assertEquals(foundReminder.review_status, "pending");
+
+          // 4. Update the reminder's due_at via value patching (NOT correction)
+          const newDueAt = "2026-07-20T14:30:00Z";
+          const { parsed: updated } = await callTool("update_decision", {
+            decision_id: reminderDecisionId,
+            value: { due_at: newDueAt },
+          });
+
+          // 5. Verify review_status remains unchanged
+          assertEquals(updated.review_status, "pending");
+          // Verify due_at was updated
+          assertEquals(updated.value.due_at, newDueAt);
+          // Verify description was preserved (shallow merge)
+          assertEquals(updated.value.description, "Dentist appointment");
+
+          // 6. Verify via search_thoughts that updated due_at is returned
+          const { parsed: verifySearch } = await callTool("search_thoughts", {
+            embedding: dummyEmbedding(),
+            match_threshold: 0.0,
+            match_count: 50,
+            include_decisions: true,
+          });
+
+          const verifyThought = verifySearch.find(
+            (t: { id: string }) => t.id === captured.thought_id
+          );
+          const verifyReminder = verifyThought.decisions.find(
+            (d: { decision_type: string }) => d.decision_type === "reminder"
+          );
+          assertEquals(verifyReminder.value.due_at, newDueAt);
+          assertEquals(verifyReminder.review_status, "pending");
+
+          // 7. Verify get_due_reminders returns the updated time correctly
+          //    Set due_at to the past so it shows up as due
+          const pastDueAt = "2020-01-01T00:00:00Z";
+          await callTool("update_decision", {
+            decision_id: reminderDecisionId,
+            value: { due_at: pastDueAt },
+          });
+
+          const { data: dueReminders } =
+            await supabase.rpc("get_due_reminders");
+          const ourReminder = dueReminders?.find(
+            (r: { decision_id: string }) => r.decision_id === reminderDecisionId
+          );
+          assertExists(
+            ourReminder,
+            "Reminder should appear in get_due_reminders"
+          );
+          assertEquals(
+            new Date(ourReminder.due_at).toISOString(),
+            new Date(pastDueAt).toISOString()
+          );
+          assertEquals(ourReminder.description, "Dentist appointment");
+
+          // Clean up second session
+          await supabase.from("chat_sessions").delete().eq("id", session2!.id);
+        }
+      );
+
       // ---- list_decisions ----
 
       await t.step("list_decisions filters by type and status", async () => {
