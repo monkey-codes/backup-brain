@@ -296,6 +296,93 @@ Deno.test({
         }
       );
 
+      // ---- search_thoughts: include_decisions ----
+
+      await t.step(
+        "search_thoughts with include_decisions returns nested decisions",
+        async () => {
+          const { parsed, isError } = await callTool("search_thoughts", {
+            embedding: dummyEmbedding(),
+            match_threshold: 0.0,
+            match_count: 5,
+            include_decisions: true,
+          });
+
+          assertEquals(isError, undefined);
+          assertEquals(Array.isArray(parsed), true);
+          assertEquals(parsed.length >= 1, true);
+
+          // Find our test thought in the results
+          const match = parsed.find((t: { id: string }) => t.id === thoughtId);
+          assertExists(match, "Test thought should appear in search results");
+          assertExists(match.decisions, "Should have decisions array");
+          assertEquals(Array.isArray(match.decisions), true);
+          // We created 3 decisions via capture_thought
+          assertEquals(match.decisions.length, 3);
+
+          // Verify decision shape
+          const types = match.decisions
+            .map((d: { decision_type: string }) => d.decision_type)
+            .sort();
+          assertEquals(types, ["classification", "entity", "tag"]);
+        }
+      );
+
+      await t.step(
+        "search_thoughts without include_decisions returns no decisions",
+        async () => {
+          const { parsed, isError } = await callTool("search_thoughts", {
+            embedding: dummyEmbedding(),
+            match_threshold: 0.0,
+            match_count: 5,
+          });
+
+          assertEquals(isError, undefined);
+          assertEquals(parsed.length >= 1, true);
+
+          // No decisions key should be present
+          const match = parsed.find((t: { id: string }) => t.id === thoughtId);
+          assertExists(match);
+          assertEquals(match.decisions, undefined);
+        }
+      );
+
+      await t.step(
+        "search_thoughts include_decisions with no decisions returns empty array",
+        async () => {
+          // Create a thought with no decisions
+          const { data: bare } = await supabase
+            .from("thoughts")
+            .insert({
+              content: "A thought with no decisions at all",
+              session_id: testSessionId,
+              created_by: testUserId,
+              embedding: `[${dummyEmbedding().join(",")}]`,
+            })
+            .select("id")
+            .single();
+          assertExists(bare);
+          createdIds.thoughts.push(bare!.id);
+
+          const { parsed, isError } = await callTool("search_thoughts", {
+            embedding: dummyEmbedding(),
+            match_threshold: 0.0,
+            match_count: 50,
+            include_decisions: true,
+          });
+
+          assertEquals(isError, undefined);
+          const bareMatch = parsed.find(
+            (t: { id: string }) => t.id === bare!.id
+          );
+          assertExists(
+            bareMatch,
+            "Bare thought should appear in search results"
+          );
+          assertEquals(bareMatch.decisions.length, 0);
+        }
+      );
+
       // ---- create_decision ----
 
       await t.step("create_decision adds a decision to a thought", async () => {

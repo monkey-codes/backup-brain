@@ -95,6 +95,11 @@ function rewriteToolsForLLM(tools: ToolDefinition[]): ToolDefinition[] {
               type: "number",
               description: "Maximum results to return (1-50, default 10)",
             },
+            include_decisions: {
+              type: "boolean",
+              description:
+                "When true, fetch and nest decisions for each matched thought (default false)",
+            },
           },
           required: ["query"],
         },
