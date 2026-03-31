@@ -257,4 +257,47 @@ describe("ChatView", () => {
       content: "enter test",
     });
   });
+
+  it("renders date dividers between message groups", async () => {
+    const messagesAcrossDays = [
+      {
+        id: "msg-a",
+        session_id: "session-1",
+        role: "user" as const,
+        content: "First day message",
+        created_at: "2026-03-25T10:00:00Z",
+      },
+      {
+        id: "msg-b",
+        session_id: "session-1",
+        role: "assistant" as const,
+        content: "First day reply",
+        created_at: "2026-03-25T10:01:00Z",
+      },
+      {
+        id: "msg-c",
+        session_id: "session-1",
+        role: "user" as const,
+        content: "Second day message",
+        created_at: "2026-03-26T09:00:00Z",
+      },
+    ];
+    setupSupabaseMock(messagesAcrossDays);
+    renderChatView();
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId("date-divider")).toHaveLength(2);
+    });
+  });
+
+  it("renders a single date divider for same-day messages", async () => {
+    setupSupabaseMock(); // Both messages on same day
+    renderChatView();
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId("chat-message")).toHaveLength(2);
+    });
+
+    expect(screen.getAllByTestId("date-divider")).toHaveLength(1);
+  });
 });
