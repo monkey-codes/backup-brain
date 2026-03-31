@@ -1,12 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
-import { processMessage, type ProcessContext } from "../react-loop.js";
+import { ReactLoopExecutor } from "../react-loop-executor.js";
 import type {
   LLMProvider,
   LLMResponse,
   EmbeddingProvider,
+  ToolDefinition,
 } from "../llm-provider.js";
-import type { McpClient } from "../mcp-client.js";
-import type { ToolDefinition } from "../llm-provider.js";
+import type { ToolExecutor } from "../mcp-client.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -24,24 +24,13 @@ function createMockLLM(responses: LLMResponse[]): LLMProvider {
   };
 }
 
-function createMockMcp(results: Record<string, string>): McpClient {
+function createMockToolExecutor(
+  results: Record<string, string> = {}
+): ToolExecutor {
   return {
-    callTool: vi.fn(async (name: string) => {
-      if (name === "list_decisions" && !results[name]) return "[]";
-      return results[name] ?? "{}";
-    }),
     listTools: vi.fn(async () => []),
-    initialize: vi.fn(async () => {}),
-  } as unknown as McpClient;
-}
-
-/** Filter mcp.callTool mock calls, excluding internal list_decisions calls */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getToolCalls(mcp: McpClient): any[][] {
-  return (mcp.callTool as ReturnType<typeof vi.fn>).mock.calls.filter(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (c: any[]) => c[0] !== "list_decisions"
-  );
+    callTool: vi.fn(async (name: string) => results[name] ?? "{}"),
+  };
 }
 
 function createMockEmbedding(): EmbeddingProvider {
@@ -49,38 +38,6 @@ function createMockEmbedding(): EmbeddingProvider {
   return {
     embed: vi.fn(async () => fakeEmbedding),
   };
-}
-
-function createMockSupabase(messages: { role: string; content: string }[]) {
-  return {
-    from: vi.fn((table: string) => {
-      if (table === "chat_messages") {
-        return {
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              order: vi.fn(() => ({
-                data: messages,
-                error: null,
-              })),
-            })),
-          })),
-        };
-      }
-      if (table === "chat_sessions") {
-        return {
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              single: vi.fn(() => ({
-                data: { title: "Test Session" },
-                error: null,
-              })),
-            })),
-          })),
-        };
-      }
-      return { select: vi.fn() };
-    }),
-  } as unknown as ProcessContext["supabase"];
 }
 
 const TOOLS: ToolDefinition[] = [
@@ -91,6 +48,9 @@ const TOOLS: ToolDefinition[] = [
       type: "object",
       properties: {
         content: { type: "string" },
+        embedding: { type: "array", items: { type: "number" } },
+        session_id: { type: "string" },
+        created_by: { type: "string" },
         decisions: { type: "array" },
       },
     },
@@ -111,18 +71,27 @@ const TOOLS: ToolDefinition[] = [
   },
 ];
 
-function buildContext(overrides: Partial<ProcessContext>): ProcessContext {
-  return {
-    sessionId: "sess-1",
-    userId: "user-1",
-    llm: createMockLLM([]),
-    mcp: createMockMcp({}),
-    tools: TOOLS,
+const SESSION_ID = "sess-1";
+const USER_ID = "user-1";
+
+function createExecutorAndRun(
+  llm: LLMProvider,
+  toolExecutor: ToolExecutor,
+  messages?: { role: "user" | "assistant"; content: string }[]
+) {
+  const embedding = createMockEmbedding();
+  const executor = new ReactLoopExecutor(llm, embedding, toolExecutor);
+  return executor.run({
     systemPrompt: "You are helpful.",
-    supabase: createMockSupabase([]),
-    embedding: createMockEmbedding(),
-    ...overrides,
-  };
+    messages: messages ?? [{ role: "user", content: "test" }],
+    tools: TOOLS,
+    argInjections: {
+      capture_thought: (args) => {
+        args.session_id = SESSION_ID;
+        args.created_by = USER_ID;
+      },
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -173,27 +142,22 @@ describe("Reminder detection", () => {
       },
     ]);
 
-    const mcp = createMockMcp({
+    const toolExecutor = createMockToolExecutor({
       capture_thought: JSON.stringify({ thought_id: "t-1", decisions: [] }),
     });
 
-    const result = await processMessage(
-      buildContext({
-        llm,
-        mcp,
-        supabase: createMockSupabase([
-          {
-            role: "user",
-            content: "I need to submit the tax return by April 15th",
-          },
-        ]),
-      })
-    );
+    const result = await createExecutorAndRun(llm, toolExecutor, [
+      {
+        role: "user",
+        content: "I need to submit the tax return by April 15th",
+      },
+    ]);
 
-    expect(result).toContain("tax return");
+    expect(result.content).toContain("tax return");
 
     // Verify capture_thought was called with a reminder decision
-    const callArgs = getToolCalls(mcp)[0];
+    const callArgs = (toolExecutor.callTool as ReturnType<typeof vi.fn>).mock
+      .calls[0];
     expect(callArgs[0]).toBe("capture_thought");
 
     const decisions = callArgs[1].decisions;
@@ -255,13 +219,14 @@ describe("Reminder detection", () => {
       },
     ]);
 
-    const mcp = createMockMcp({
+    const toolExecutor = createMockToolExecutor({
       capture_thought: JSON.stringify({ thought_id: "t-2", decisions: [] }),
     });
 
-    await processMessage(buildContext({ llm, mcp }));
+    await createExecutorAndRun(llm, toolExecutor);
 
-    const callArgs = getToolCalls(mcp)[0];
+    const callArgs = (toolExecutor.callTool as ReturnType<typeof vi.fn>).mock
+      .calls[0];
     const decisions = callArgs[1].decisions;
     const reminder = decisions.find(
       (d: { decision_type: string }) => d.decision_type === "reminder"
@@ -318,15 +283,16 @@ describe("Reminder detection", () => {
       },
     ]);
 
-    const mcp = createMockMcp({
+    const toolExecutor = createMockToolExecutor({
       capture_thought: JSON.stringify({ thought_id: "t-3", decisions: [] }),
     });
 
-    const result = await processMessage(buildContext({ llm, mcp }));
+    const result = await createExecutorAndRun(llm, toolExecutor);
 
-    expect(result).toContain("plumber");
+    expect(result.content).toContain("plumber");
 
-    const callArgs = getToolCalls(mcp)[0];
+    const callArgs = (toolExecutor.callTool as ReturnType<typeof vi.fn>).mock
+      .calls[0];
     const decisions = callArgs[1].decisions;
     const reminder = decisions.find(
       (d: { decision_type: string }) => d.decision_type === "reminder"
@@ -408,13 +374,14 @@ describe("Reminder detection", () => {
       },
     ]);
 
-    const mcp = createMockMcp({
+    const toolExecutor = createMockToolExecutor({
       capture_thought: JSON.stringify({ thought_id: "t-4", decisions: [] }),
     });
 
-    await processMessage(buildContext({ llm, mcp }));
+    await createExecutorAndRun(llm, toolExecutor);
 
-    const callArgs = getToolCalls(mcp)[0];
+    const callArgs = (toolExecutor.callTool as ReturnType<typeof vi.fn>).mock
+      .calls[0];
     const decisions = callArgs[1].decisions;
 
     // Verify all decision types present
@@ -472,30 +439,24 @@ describe("Reminder detection", () => {
       },
     ]);
 
-    const mcp = createMockMcp({
+    const toolExecutor = createMockToolExecutor({
       create_decision: JSON.stringify({
         id: "d-new",
         decision_type: "reminder",
       }),
     });
 
-    const result = await processMessage(
-      buildContext({
-        llm,
-        mcp,
-        supabase: createMockSupabase([
-          {
-            role: "user",
-            content:
-              "Oh and that car insurance thing — it expires April 10th, don't let me forget",
-          },
-        ]),
-      })
-    );
+    const result = await createExecutorAndRun(llm, toolExecutor, [
+      {
+        role: "user",
+        content:
+          "Oh and that car insurance thing — it expires April 10th, don't let me forget",
+      },
+    ]);
 
-    expect(result).toContain("insurance");
+    expect(result.content).toContain("insurance");
 
-    expect(mcp.callTool).toHaveBeenCalledWith("create_decision", {
+    expect(toolExecutor.callTool).toHaveBeenCalledWith("create_decision", {
       thought_id: "t-existing",
       decision_type: "reminder",
       value: {

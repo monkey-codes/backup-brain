@@ -1,6 +1,15 @@
 import type { ToolDefinition } from "./llm-provider.js";
 
 // ---------------------------------------------------------------------------
+// ToolExecutor port — extracted for testability
+// ---------------------------------------------------------------------------
+
+export interface ToolExecutor {
+  listTools(): Promise<ToolDefinition[]>;
+  callTool(name: string, args: Record<string, unknown>): Promise<string>;
+}
+
+// ---------------------------------------------------------------------------
 // Thin MCP client — JSON-RPC over HTTP
 // ---------------------------------------------------------------------------
 
@@ -11,7 +20,7 @@ interface JsonRpcResponse {
   error?: { code: number; message: string };
 }
 
-export class McpClient {
+export class McpClient implements ToolExecutor {
   private url: string;
   private nextId = 1;
 

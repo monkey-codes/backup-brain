@@ -1,13 +1,8 @@
 import cron from "node-cron";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type {
-  LLMProvider,
-  LLMMessage,
-  ToolDefinition,
-  EmbeddingProvider,
-} from "./llm-provider.js";
+import type { LLMProvider, EmbeddingProvider } from "./llm-provider.js";
 import type { McpClient } from "./mcp-client.js";
-import { rewriteToolsForLLM } from "./react-loop.js";
+import { ReactLoopExecutor } from "./react-loop-executor.js";
 
 // ---------------------------------------------------------------------------
 // Reminder checker — runs every minute, pure SQL, no LLM
@@ -319,16 +314,6 @@ export async function processReviewerBatch(
   candidates: ReviewerCandidate[]
 ): Promise<void> {
   const tools = await deps.mcp.listTools();
-  // Only expose the tools the reviewer needs
-  const reviewerToolNames = new Set([
-    "update_decision",
-    "create_group",
-    "create_notification",
-    "list_decisions",
-    "search_thoughts",
-  ]);
-  const filteredTools = tools.filter((t) => reviewerToolNames.has(t.name));
-  const llmTools = rewriteToolsForLLM(filteredTools);
 
   // Build the user message with candidate data
   const candidateDescriptions = candidates
@@ -356,51 +341,24 @@ export async function processReviewerBatch(
 
   const userId = thoughtData?.created_by ?? "unknown";
 
-  const messages: LLMMessage[] = [
-    { role: "system", content: REVIEWER_SYSTEM_PROMPT },
-    {
-      role: "user",
-      content: `Review the following ${candidates.length} candidate decisions. For notifications, use user_id: "${userId}".\n\n${candidateDescriptions}`,
-    },
-  ];
-
-  const MAX_ROUNDS = 10;
-  for (let round = 0; round < MAX_ROUNDS; round++) {
-    const response = await deps.llm.chat(messages, llmTools);
-
-    if (response.finish_reason === "stop" || response.tool_calls.length === 0) {
-      break;
-    }
-
-    messages.push({
-      role: "assistant",
-      content: response.content,
-      tool_calls: response.tool_calls,
-    });
-
-    for (const tc of response.tool_calls) {
-      let result: string;
-      try {
-        const args = JSON.parse(tc.arguments);
-
-        // Handle search_thoughts embedding conversion
-        if (tc.name === "search_thoughts" && args.query) {
-          args.embedding = await deps.embedding.embed(args.query);
-          delete args.query;
-        }
-
-        result = await deps.mcp.callTool(tc.name, args);
-      } catch (error) {
-        result = JSON.stringify({ error: String(error) });
-      }
-
-      messages.push({
-        role: "tool",
-        content: result,
-        tool_call_id: tc.id,
-      });
-    }
-  }
+  const executor = new ReactLoopExecutor(deps.llm, deps.embedding, deps.mcp);
+  await executor.run({
+    systemPrompt: REVIEWER_SYSTEM_PROMPT,
+    messages: [
+      {
+        role: "user",
+        content: `Review the following ${candidates.length} candidate decisions. For notifications, use user_id: "${userId}".\n\n${candidateDescriptions}`,
+      },
+    ],
+    tools,
+    toolFilter: new Set([
+      "update_decision",
+      "create_group",
+      "create_notification",
+      "list_decisions",
+      "search_thoughts",
+    ]),
+  });
 }
 
 /**

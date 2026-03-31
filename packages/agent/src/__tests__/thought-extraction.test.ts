@@ -1,13 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { processMessage, type ProcessContext } from "../react-loop.js";
+import { ReactLoopExecutor } from "../react-loop-executor.js";
 import type {
   LLMProvider,
   LLMResponse,
-  LLMMessage,
   ToolDefinition,
   EmbeddingProvider,
 } from "../llm-provider.js";
-import type { McpClient } from "../mcp-client.js";
+import type { ToolExecutor } from "../mcp-client.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -25,24 +24,13 @@ function createMockLLM(responses: LLMResponse[]): LLMProvider {
   };
 }
 
-function createMockMcp(results: Record<string, string>): McpClient {
+function createMockToolExecutor(
+  results: Record<string, string> = {}
+): ToolExecutor {
   return {
-    callTool: vi.fn(async (name: string) => {
-      if (name === "list_decisions" && !results[name]) return "[]";
-      return results[name] ?? "{}";
-    }),
     listTools: vi.fn(async () => []),
-    initialize: vi.fn(async () => {}),
-  } as unknown as McpClient;
-}
-
-/** Filter mcp.callTool mock calls, excluding internal list_decisions calls */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getToolCalls(mcp: McpClient): any[][] {
-  return (mcp.callTool as ReturnType<typeof vi.fn>).mock.calls.filter(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (c: any[]) => c[0] !== "list_decisions"
-  );
+    callTool: vi.fn(async (name: string) => results[name] ?? "{}"),
+  };
 }
 
 function createMockEmbedding(): EmbeddingProvider {
@@ -50,38 +38,6 @@ function createMockEmbedding(): EmbeddingProvider {
   return {
     embed: vi.fn(async () => fakeEmbedding),
   };
-}
-
-function createMockSupabase(messages: { role: string; content: string }[]) {
-  return {
-    from: vi.fn((table: string) => {
-      if (table === "chat_messages") {
-        return {
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              order: vi.fn(() => ({
-                data: messages,
-                error: null,
-              })),
-            })),
-          })),
-        };
-      }
-      if (table === "chat_sessions") {
-        return {
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              single: vi.fn(() => ({
-                data: { title: null },
-                error: null,
-              })),
-            })),
-          })),
-        };
-      }
-      return { select: vi.fn() };
-    }),
-  } as unknown as ProcessContext["supabase"];
 }
 
 const TOOLS: ToolDefinition[] = [
@@ -92,6 +48,9 @@ const TOOLS: ToolDefinition[] = [
       type: "object",
       properties: {
         content: { type: "string" },
+        embedding: { type: "array", items: { type: "number" } },
+        session_id: { type: "string" },
+        created_by: { type: "string" },
         decisions: { type: "array" },
       },
     },
@@ -120,18 +79,31 @@ const TOOLS: ToolDefinition[] = [
   },
 ];
 
-function buildContext(overrides: Partial<ProcessContext>): ProcessContext {
-  return {
-    sessionId: "sess-1",
-    userId: "user-1",
-    llm: createMockLLM([]),
-    mcp: createMockMcp({}),
-    tools: TOOLS,
+const SESSION_ID = "sess-1";
+const USER_ID = "user-1";
+
+function createExecutorAndRun(
+  llm: LLMProvider,
+  toolExecutor: ToolExecutor,
+  embeddingProvider?: EmbeddingProvider,
+  messages?: { role: "user" | "assistant"; content: string }[]
+) {
+  const embedding = embeddingProvider ?? createMockEmbedding();
+  const executor = new ReactLoopExecutor(llm, embedding, toolExecutor);
+  return executor.run({
     systemPrompt: "You are helpful.",
-    supabase: createMockSupabase([]),
-    embedding: createMockEmbedding(),
-    ...overrides,
-  };
+    messages: messages ?? [{ role: "user", content: "test" }],
+    tools: TOOLS,
+    argInjections: {
+      capture_thought: (args) => {
+        args.session_id = SESSION_ID;
+        args.created_by = USER_ID;
+      },
+      set_session_title: (args) => {
+        args.session_id = SESSION_ID;
+      },
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -184,7 +156,7 @@ describe("Thought extraction, classification & tagging", () => {
       },
     ]);
 
-    const mcp = createMockMcp({
+    const toolExecutor = createMockToolExecutor({
       capture_thought: JSON.stringify({
         thought_id: "t-1",
         decisions: [
@@ -205,30 +177,28 @@ describe("Thought extraction, classification & tagging", () => {
 
     const embeddingProvider = createMockEmbedding();
 
-    const result = await processMessage(
-      buildContext({
-        llm,
-        mcp,
-        embedding: embeddingProvider,
-        supabase: createMockSupabase([
-          {
-            role: "user",
-            content:
-              "I need to replace the gutters on the north side of the house",
-          },
-        ]),
-      })
+    const result = await createExecutorAndRun(
+      llm,
+      toolExecutor,
+      embeddingProvider,
+      [
+        {
+          role: "user",
+          content:
+            "I need to replace the gutters on the north side of the house",
+        },
+      ]
     );
 
-    expect(result).toContain("gutters");
+    expect(result.content).toContain("gutters");
 
     // Verify capture_thought was called with correct decisions
-    expect(mcp.callTool).toHaveBeenCalledWith(
+    expect(toolExecutor.callTool).toHaveBeenCalledWith(
       "capture_thought",
       expect.objectContaining({
         content: captureArgs.content,
-        session_id: "sess-1",
-        created_by: "user-1",
+        session_id: SESSION_ID,
+        created_by: USER_ID,
         embedding: expect.any(Array),
         decisions: captureArgs.decisions,
       })
@@ -312,29 +282,16 @@ describe("Thought extraction, classification & tagging", () => {
       },
     ]);
 
-    const mcp = createMockMcp({
+    const toolExecutor = createMockToolExecutor({
       capture_thought: JSON.stringify({ thought_id: "t-2", decisions: [] }),
     });
 
-    await processMessage(
-      buildContext({
-        llm,
-        mcp,
-        supabase: createMockSupabase([
-          {
-            role: "user",
-            content:
-              "Meeting with John at the Denver office next Friday to discuss the bakery franchise idea",
-          },
-        ]),
-      })
-    );
+    await createExecutorAndRun(llm, toolExecutor);
 
     // Verify all 7 decisions were passed through
-    const toolCalls = getToolCalls(mcp);
-    const callArgs = toolCalls[0];
-    expect(callArgs[0]).toBe("capture_thought");
-    const passedDecisions = callArgs[1].decisions;
+    const callArgs = (toolExecutor.callTool as ReturnType<typeof vi.fn>).mock
+      .calls[0][1];
+    const passedDecisions = callArgs.decisions;
     expect(passedDecisions).toHaveLength(7);
 
     // Verify decision types
@@ -356,7 +313,6 @@ describe("Thought extraction, classification & tagging", () => {
 
   it("supports create_decision for adding decisions to existing thoughts", async () => {
     const llm = createMockLLM([
-      // First round: LLM calls create_decision on an existing thought
       {
         content: null,
         tool_calls: [
@@ -381,7 +337,7 @@ describe("Thought extraction, classification & tagging", () => {
       },
     ]);
 
-    const mcp = createMockMcp({
+    const toolExecutor = createMockToolExecutor({
       create_decision: JSON.stringify({
         id: "d-new",
         decision_type: "tag",
@@ -389,18 +345,12 @@ describe("Thought extraction, classification & tagging", () => {
       }),
     });
 
-    const result = await processMessage(
-      buildContext({
-        llm,
-        mcp,
-        supabase: createMockSupabase([
-          { role: "user", content: "Actually that last thing is urgent" },
-        ]),
-      })
-    );
+    const result = await createExecutorAndRun(llm, toolExecutor, undefined, [
+      { role: "user", content: "Actually that last thing is urgent" },
+    ]);
 
-    expect(result).toContain("urgent");
-    expect(mcp.callTool).toHaveBeenCalledWith("create_decision", {
+    expect(result.content).toContain("urgent");
+    expect(toolExecutor.callTool).toHaveBeenCalledWith("create_decision", {
       thought_id: "t-existing",
       decision_type: "tag",
       value: { label: "urgent" },
@@ -442,14 +392,15 @@ describe("Thought extraction, classification & tagging", () => {
       },
     ]);
 
-    const mcp = createMockMcp({
+    const toolExecutor = createMockToolExecutor({
       capture_thought: JSON.stringify({ thought_id: "t-3", decisions: [] }),
     });
 
-    await processMessage(buildContext({ llm, mcp }));
+    await createExecutorAndRun(llm, toolExecutor);
 
-    const toolCalls = getToolCalls(mcp);
-    const classification = toolCalls[0][1].decisions[0];
+    const callArgs = (toolExecutor.callTool as ReturnType<typeof vi.fn>).mock
+      .calls[0][1];
+    const classification = callArgs.decisions[0];
     expect(classification.decision_type).toBe("classification");
     expect(classification.value.category).toBe("Food & Dining");
   });
@@ -477,10 +428,7 @@ describe("Thought extraction, classification & tagging", () => {
           {
             id: "call_2",
             name: "set_session_title",
-            arguments: JSON.stringify({
-              session_id: "sess-1",
-              title: "Truck Tires",
-            }),
+            arguments: JSON.stringify({ title: "Truck Tires" }),
           },
         ],
         finish_reason: "tool_calls",
@@ -492,16 +440,14 @@ describe("Thought extraction, classification & tagging", () => {
       },
     ]);
 
-    const mcp = createMockMcp({
+    const toolExecutor = createMockToolExecutor({
       capture_thought: JSON.stringify({ thought_id: "t-4", decisions: [] }),
       set_session_title: JSON.stringify({ id: "sess-1" }),
     });
 
     const embeddingProvider = createMockEmbedding();
 
-    await processMessage(
-      buildContext({ llm, mcp, embedding: embeddingProvider })
-    );
+    await createExecutorAndRun(llm, toolExecutor, embeddingProvider);
 
     // Embedding generated once — only for capture_thought
     expect(embeddingProvider.embed).toHaveBeenCalledTimes(1);
@@ -511,20 +457,19 @@ describe("Thought extraction, classification & tagging", () => {
 
     // capture_thought gets embedding injected
     const captureCall = (
-      mcp.callTool as ReturnType<typeof vi.fn>
+      toolExecutor.callTool as ReturnType<typeof vi.fn>
     ).mock.calls.find((c: unknown[]) => c[0] === "capture_thought");
     expect(captureCall![1].embedding).toHaveLength(1536);
 
     // set_session_title does NOT get embedding
     const titleCall = (
-      mcp.callTool as ReturnType<typeof vi.fn>
+      toolExecutor.callTool as ReturnType<typeof vi.fn>
     ).mock.calls.find((c: unknown[]) => c[0] === "set_session_title");
     expect(titleCall![1].embedding).toBeUndefined();
   });
 
   it("handles capture_thought followed by create_decision in separate rounds", async () => {
     const llm = createMockLLM([
-      // Round 1: capture the thought
       {
         content: null,
         tool_calls: [
@@ -546,7 +491,6 @@ describe("Thought extraction, classification & tagging", () => {
         ],
         finish_reason: "tool_calls",
       },
-      // Round 2: add another decision to the same thought
       {
         content: null,
         tool_calls: [
@@ -564,7 +508,6 @@ describe("Thought extraction, classification & tagging", () => {
         ],
         finish_reason: "tool_calls",
       },
-      // Round 3: final response
       {
         content: "I've noted that your car needs an oil change.",
         tool_calls: [],
@@ -572,19 +515,19 @@ describe("Thought extraction, classification & tagging", () => {
       },
     ]);
 
-    const mcp = createMockMcp({
+    const toolExecutor = createMockToolExecutor({
       capture_thought: JSON.stringify({ thought_id: "t-5", decisions: [] }),
       create_decision: JSON.stringify({ id: "d-5" }),
     });
 
-    const result = await processMessage(buildContext({ llm, mcp }));
+    const result = await createExecutorAndRun(llm, toolExecutor);
 
-    expect(result).toContain("oil change");
-    const toolCalls = getToolCalls(mcp);
-    expect(toolCalls).toHaveLength(2);
-
-    expect(toolCalls[0][0]).toBe("capture_thought");
-    expect(toolCalls[1][0]).toBe("create_decision");
-    expect(toolCalls[1][1].thought_id).toBe("t-5");
+    expect(result.content).toContain("oil change");
+    const calls = (toolExecutor.callTool as ReturnType<typeof vi.fn>).mock
+      .calls;
+    expect(calls).toHaveLength(2);
+    expect(calls[0][0]).toBe("capture_thought");
+    expect(calls[1][0]).toBe("create_decision");
+    expect(calls[1][1].thought_id).toBe("t-5");
   });
 });

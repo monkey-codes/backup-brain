@@ -1,13 +1,13 @@
 import { createServer, type Server } from "node:http";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type {
-  LLMProvider,
-  EmbeddingProvider,
-  ToolDefinition,
-} from "./llm-provider.js";
+import type { LLMProvider, EmbeddingProvider } from "./llm-provider.js";
 import type { McpClient } from "./mcp-client.js";
 import type { SessionLock } from "./session-lock.js";
-import { processMessage } from "./react-loop.js";
+import {
+  SupabaseChatContextLoader,
+  type CorrectionRecord,
+} from "./chat-context-loader.js";
+import { ReactLoopExecutor } from "./react-loop-executor.js";
 
 // ---------------------------------------------------------------------------
 // Dependencies — injected by the entry point
@@ -23,6 +23,32 @@ export interface AgentDeps {
 }
 
 // ---------------------------------------------------------------------------
+// System prompt builders
+// ---------------------------------------------------------------------------
+
+function buildCorrectionsContext(corrections: CorrectionRecord[]): string {
+  if (corrections.length === 0) return "";
+
+  const formatted = corrections
+    .map(
+      (c) =>
+        `- [${c.decision_type}] Original: ${JSON.stringify(c.value)} → Corrected: ${JSON.stringify(c.corrected_value)} (reasoning was: "${c.reasoning}")`
+    )
+    .join("\n");
+
+  return `\n\n## Past corrections\n\nThe following decisions were corrected by the user. Learn from these to avoid repeating the same mistakes:\n\n${formatted}`;
+}
+
+function buildSessionContext(
+  sessionId: string,
+  sessionTitle: string | null
+): string {
+  return sessionTitle
+    ? `\n\n## Current session\n\nSession ID: ${sessionId}\nSession title: "${sessionTitle}"\n\nThe session already has a title — do not call \`set_session_title\`.`
+    : `\n\n## Current session\n\nSession ID: ${sessionId}\nSession title: (none)\n\nThis session has no title yet. Call \`set_session_title\` with a short, descriptive title based on the conversation content.`;
+}
+
+// ---------------------------------------------------------------------------
 // Message processing with retry + error handling
 // ---------------------------------------------------------------------------
 
@@ -33,17 +59,7 @@ export async function handleUserMessage(
 ): Promise<void> {
   const release = await deps.sessionLock.acquire(sessionId);
   try {
-    const tools = await deps.mcp.listTools();
-    const response = await processMessage({
-      sessionId,
-      userId,
-      llm: deps.llm,
-      mcp: deps.mcp,
-      tools,
-      systemPrompt: deps.systemPrompt,
-      supabase: deps.supabase,
-      embedding: deps.embedding,
-    });
+    const response = await processChat(deps, sessionId, userId);
 
     await deps.supabase.from("chat_messages").insert({
       session_id: sessionId,
@@ -55,17 +71,7 @@ export async function handleUserMessage(
 
     // Retry once
     try {
-      const tools = await deps.mcp.listTools();
-      const response = await processMessage({
-        sessionId,
-        userId,
-        llm: deps.llm,
-        mcp: deps.mcp,
-        tools,
-        systemPrompt: deps.systemPrompt,
-        supabase: deps.supabase,
-        embedding: deps.embedding,
-      });
+      const response = await processChat(deps, sessionId, userId);
 
       await deps.supabase.from("chat_messages").insert({
         session_id: sessionId,
@@ -85,6 +91,45 @@ export async function handleUserMessage(
   } finally {
     release();
   }
+}
+
+async function processChat(
+  deps: AgentDeps,
+  sessionId: string,
+  userId: string
+): Promise<string> {
+  const contextLoader = new SupabaseChatContextLoader(deps.supabase, deps.mcp);
+
+  const [history, title, corrections] = await Promise.all([
+    contextLoader.loadHistory(sessionId),
+    contextLoader.loadSessionTitle(sessionId),
+    contextLoader.loadCorrections(),
+  ]);
+
+  const fullSystemPrompt =
+    deps.systemPrompt +
+    buildCorrectionsContext(corrections) +
+    buildSessionContext(sessionId, title);
+
+  const tools = await deps.mcp.listTools();
+  const executor = new ReactLoopExecutor(deps.llm, deps.embedding, deps.mcp);
+
+  const result = await executor.run({
+    systemPrompt: fullSystemPrompt,
+    messages: history,
+    tools,
+    argInjections: {
+      capture_thought: (args) => {
+        args.session_id = sessionId;
+        args.created_by = userId;
+      },
+      set_session_title: (args) => {
+        args.session_id = sessionId;
+      },
+    },
+  });
+
+  return result.content;
 }
 
 // ---------------------------------------------------------------------------
