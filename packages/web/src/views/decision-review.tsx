@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Pencil, ArrowLeft, Loader2 } from "lucide-react";
+import { Check, Pencil, Loader2, Trash2 } from "lucide-react";
 import type { DecisionType, DecisionValue } from "@backup-brain/shared";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
@@ -30,10 +30,10 @@ function confidenceBadge(confidence: number) {
   const pct = Math.round(confidence * 100);
   const color =
     confidence >= 0.7
-      ? "bg-green-100 text-green-800"
+      ? "bg-green-900/40 text-green-400"
       : confidence >= 0.4
-        ? "bg-yellow-100 text-yellow-800"
-        : "bg-red-100 text-red-800";
+        ? "bg-yellow-900/40 text-yellow-400"
+        : "bg-red-900/40 text-red-400";
   return (
     <span
       data-testid="confidence-badge"
@@ -47,10 +47,10 @@ function confidenceBadge(confidence: number) {
 function statusBadge(status: string) {
   const color =
     status === "accepted"
-      ? "bg-green-100 text-green-800"
+      ? "bg-green-900/40 text-green-400"
       : status === "corrected"
-        ? "bg-blue-100 text-blue-800"
-        : "bg-gray-100 text-gray-800";
+        ? "bg-primary/15 text-primary"
+        : "bg-surface-container-highest text-on-surface-variant";
   return (
     <span
       data-testid="status-badge"
@@ -63,7 +63,7 @@ function statusBadge(status: string) {
 
 function typeBadge(type: DecisionType) {
   return (
-    <span className="inline-block rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium capitalize text-purple-800">
+    <span className="font-label inline-block rounded-full bg-purple-900/40 px-2 py-0.5 text-xs uppercase tracking-widest text-purple-400">
       {type}
     </span>
   );
@@ -88,6 +88,12 @@ function extractFormFields(
   }
 }
 
+const BORDER_COLOR: Record<string, string> = {
+  pending: "border-l-purple-500",
+  accepted: "border-l-primary",
+  corrected: "border-l-primary",
+};
+
 function CorrectionForm({
   decision,
   onSubmit,
@@ -111,7 +117,7 @@ function CorrectionForm({
     <div data-testid="correction-form" className="mt-3 space-y-2">
       {Object.entries(formValue).map(([key, val]) => (
         <div key={key} className="flex items-center gap-2">
-          <label className="w-24 text-xs font-medium capitalize text-muted-foreground">
+          <label className="font-label w-24 text-xs uppercase tracking-widest text-on-surface-variant">
             {key}
           </label>
           <input
@@ -119,7 +125,7 @@ function CorrectionForm({
             type={key === "due_at" ? "datetime-local" : "text"}
             value={val}
             onChange={(e) => handleChange(key, e.target.value)}
-            className="flex-1 rounded-md border px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-ring"
+            className="flex-1 rounded-lg bg-surface-container-lowest px-2 py-1 text-sm text-on-surface outline-none transition-colors focus:bg-surface-container-low focus:ring-2 focus:ring-primary/20"
           />
         </div>
       ))}
@@ -132,7 +138,7 @@ function CorrectionForm({
         >
           {isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
         </Button>
-        <Button size="sm" variant="outline" onClick={onCancel}>
+        <Button size="sm" variant="secondary" onClick={onCancel}>
           Cancel
         </Button>
       </div>
@@ -144,35 +150,42 @@ function DecisionCard({
   decision,
   onAccept,
   onCorrect,
+  onDiscard,
   isAccepting,
 }: {
   decision: DecisionWithThought;
   onAccept: () => void;
   onCorrect: (value: Record<string, string>) => void;
+  onDiscard: () => void;
   isAccepting: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [correctPending, setCorrectPending] = useState(false);
 
+  const borderColor =
+    BORDER_COLOR[decision.review_status] ?? "border-l-purple-500";
+
   return (
     <div
       data-testid="decision-card"
-      className="rounded-lg bg-surface-container-low p-4"
+      className={`rounded-lg border-l-4 ${borderColor} bg-surface-container-low p-4`}
     >
-      {/* Thought context */}
+      {/* Thought context — quoted block */}
       {decision.thought && (
-        <p
+        <div
           data-testid="thought-content"
-          className="mb-2 text-sm text-muted-foreground"
+          className="mb-3 rounded-lg bg-surface-container-lowest px-3 py-2"
         >
-          {decision.thought.content}
-        </p>
+          <p className="text-sm text-on-surface-variant">
+            {decision.thought.content}
+          </p>
+        </div>
       )}
 
       {/* Decision details */}
       <div className="flex flex-wrap items-center gap-2">
         {typeBadge(decision.decision_type)}
-        <span className="text-sm font-medium">
+        <span className="text-sm font-medium text-on-surface">
           {formatValue(decision.decision_type, decision.value)}
         </span>
         {confidenceBadge(decision.confidence)}
@@ -180,13 +193,13 @@ function DecisionCard({
       </div>
 
       {decision.reasoning && (
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-2 text-xs text-on-surface-variant">
           {decision.reasoning}
         </p>
       )}
 
       {decision.corrected_value && (
-        <p className="mt-1 text-xs text-blue-600">
+        <p className="mt-2 text-xs text-primary">
           Corrected to:{" "}
           {formatValue(decision.decision_type, decision.corrected_value)}
         </p>
@@ -197,7 +210,6 @@ function DecisionCard({
         <div className="mt-3 flex gap-2">
           <Button
             size="sm"
-            variant="outline"
             onClick={onAccept}
             disabled={isAccepting}
             data-testid="accept-button"
@@ -211,12 +223,21 @@ function DecisionCard({
           </Button>
           <Button
             size="sm"
-            variant="outline"
+            variant="secondary"
             onClick={() => setEditing(true)}
             data-testid="correct-button"
           >
             <Pencil className="mr-1 h-3 w-3" />
             Correct
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={onDiscard}
+            data-testid="discard-button"
+          >
+            <Trash2 className="mr-1 h-3 w-3" />
+            Discard
           </Button>
         </div>
       )}
@@ -245,56 +266,48 @@ export function DecisionReviewView({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="flex flex-1 flex-col">
-      {/* Header */}
-      <div className="border-b px-4 py-3">
-        <div className="mx-auto flex max-w-2xl items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onBack}
-            aria-label="Back to chat"
-            data-testid="back-button"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h2 className="text-lg font-semibold">Decision Review</h2>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="border-b px-4 py-2">
-        <div className="mx-auto flex max-w-2xl gap-2">
-          <Button
-            size="sm"
-            variant={filter === "needs_review" ? "default" : "outline"}
-            onClick={() => setFilter("needs_review")}
-            data-testid="filter-needs-review"
-          >
-            Needs Review
-          </Button>
-          <Button
-            size="sm"
-            variant={filter === "all" ? "default" : "outline"}
-            onClick={() => setFilter("all")}
-            data-testid="filter-all"
-          >
-            All
-          </Button>
+      {/* Segmented filter control */}
+      <div className="px-4 py-3">
+        <div className="mx-auto flex max-w-2xl">
+          <div className="inline-flex rounded-lg bg-surface-container-high p-1">
+            <button
+              onClick={() => setFilter("needs_review")}
+              data-testid="filter-needs-review"
+              className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+                filter === "needs_review"
+                  ? "bg-surface-container-lowest text-on-surface"
+                  : "text-on-surface-variant hover:text-on-surface"
+              }`}
+            >
+              Needs Review
+            </button>
+            <button
+              onClick={() => setFilter("all")}
+              data-testid="filter-all"
+              className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+                filter === "all"
+                  ? "bg-surface-container-lowest text-on-surface"
+                  : "text-on-surface-variant hover:text-on-surface"
+              }`}
+            >
+              All
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Decision list */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto px-4 pb-4">
         <div className="mx-auto flex max-w-2xl flex-col gap-3">
           {isLoading && (
             <div className="flex justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <Loader2 className="h-6 w-6 animate-spin text-on-surface-variant" />
             </div>
           )}
           {!isLoading && decisions?.length === 0 && (
             <p
               data-testid="empty-state"
-              className="py-8 text-center text-muted-foreground"
+              className="py-8 text-center text-on-surface-variant"
             >
               {filter === "needs_review"
                 ? "No decisions need review"
@@ -317,6 +330,7 @@ export function DecisionReviewView({ onBack }: { onBack: () => void }) {
                   userId: user!.id,
                 })
               }
+              onDiscard={() => acceptMutation.mutate(decision.id)}
             />
           ))}
         </div>

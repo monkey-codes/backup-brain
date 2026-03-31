@@ -367,7 +367,7 @@ describe("Bottom nav bar", () => {
     await user.click(screen.getByTestId("nav-review"));
 
     await waitFor(() => {
-      expect(screen.getByText("Decision Review")).toBeInTheDocument();
+      expect(screen.getByTestId("filter-needs-review")).toBeInTheDocument();
     });
 
     // Review tab should now be active
@@ -383,7 +383,7 @@ describe("Bottom nav bar", () => {
     // Switch to review
     await user.click(screen.getByTestId("nav-review"));
     await waitFor(() => {
-      expect(screen.getByText("Decision Review")).toBeInTheDocument();
+      expect(screen.getByTestId("filter-needs-review")).toBeInTheDocument();
     });
 
     // Switch back to chat
@@ -408,7 +408,7 @@ describe("Nav integration", () => {
     // Go to review
     await user.click(screen.getByTestId("nav-review"));
     await waitFor(() => {
-      expect(screen.getByText("Decision Review")).toBeInTheDocument();
+      expect(screen.getByTestId("filter-needs-review")).toBeInTheDocument();
     });
 
     // Tap bell

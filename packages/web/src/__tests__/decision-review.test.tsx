@@ -110,7 +110,7 @@ describe("DecisionReviewView", () => {
     vi.clearAllMocks();
   });
 
-  it("renders decision cards with thought content", async () => {
+  it("renders decision cards with quoted thought content", async () => {
     setupSupabaseMock();
     renderReview();
 
@@ -122,9 +122,13 @@ describe("DecisionReviewView", () => {
     expect(
       screen.getByText("Bob said he'd help with the move")
     ).toBeInTheDocument();
+
+    // Thought content is inside quoted context blocks
+    const cards = screen.getAllByTestId("thought-content");
+    expect(cards).toHaveLength(3);
   });
 
-  it("shows decision type, value, confidence, and status badges", async () => {
+  it("shows confidence, status, and type badges on cards", async () => {
     setupSupabaseMock();
     renderReview();
 
@@ -132,19 +136,34 @@ describe("DecisionReviewView", () => {
       expect(screen.getAllByTestId("decision-card")).toHaveLength(3);
     });
 
-    // Check confidence badges
+    // Confidence badges with color-coded thresholds
     const badges = screen.getAllByTestId("confidence-badge");
     expect(badges[0]).toHaveTextContent("50%");
     expect(badges[1]).toHaveTextContent("90%");
     expect(badges[2]).toHaveTextContent("30%");
 
-    // Check status badges
+    // Status badges
     const statusBadges = screen.getAllByTestId("status-badge");
     expect(statusBadges[0]).toHaveTextContent("pending");
     expect(statusBadges[1]).toHaveTextContent("accepted");
   });
 
-  it("defaults to needs_review filter", async () => {
+  it("renders cards with colored left borders by status", async () => {
+    setupSupabaseMock();
+    renderReview();
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId("decision-card")).toHaveLength(3);
+    });
+
+    const cards = screen.getAllByTestId("decision-card");
+    // Pending cards have purple border, accepted have primary (blue) border
+    expect(cards[0].className).toContain("border-l-purple-500");
+    expect(cards[1].className).toContain("border-l-primary");
+    expect(cards[2].className).toContain("border-l-purple-500");
+  });
+
+  it("defaults to needs_review filter via segmented control", async () => {
     setupSupabaseMock();
     renderReview();
 
@@ -152,13 +171,12 @@ describe("DecisionReviewView", () => {
       expect(mockFrom).toHaveBeenCalledWith("thought_decisions");
     });
 
-    // The needs_review filter should apply .or()
     expect(mockOr).toHaveBeenCalledWith(
       "review_status.eq.pending,confidence.lt.0.7"
     );
   });
 
-  it("switches to all filter", async () => {
+  it("switches to all filter via segmented control", async () => {
     setupSupabaseMock();
     const user = userEvent.setup();
     renderReview();
@@ -169,10 +187,7 @@ describe("DecisionReviewView", () => {
 
     await user.click(screen.getByTestId("filter-all"));
 
-    // After clicking "All", query should not use .or() filter
-    // It calls select().order() directly
     await waitFor(() => {
-      // The second call should be for "all" filter
       const calls = mockFrom.mock.calls.filter(
         (c: string[]) => c[0] === "thought_decisions"
       );
@@ -180,7 +195,7 @@ describe("DecisionReviewView", () => {
     });
   });
 
-  it("shows accept and correct buttons only for pending decisions", async () => {
+  it("shows accept, correct, and discard buttons only for pending decisions", async () => {
     setupSupabaseMock();
     renderReview();
 
@@ -190,20 +205,21 @@ describe("DecisionReviewView", () => {
 
     const cards = screen.getAllByTestId("decision-card");
 
-    // First card (pending) should have buttons
+    // First card (pending) should have all action buttons
     expect(within(cards[0]).getByTestId("accept-button")).toBeInTheDocument();
     expect(within(cards[0]).getByTestId("correct-button")).toBeInTheDocument();
+    expect(within(cards[0]).getByTestId("discard-button")).toBeInTheDocument();
 
-    // Second card (accepted) should NOT have buttons
+    // Second card (accepted) should NOT have action buttons
     expect(
       within(cards[1]).queryByTestId("accept-button")
     ).not.toBeInTheDocument();
 
-    // Third card (pending) should have buttons
+    // Third card (pending) should have action buttons
     expect(within(cards[2]).getByTestId("accept-button")).toBeInTheDocument();
   });
 
-  it("accepts a decision", async () => {
+  it("accepts a decision with gradient primary button", async () => {
     setupSupabaseMock();
     const updatedDecision = {
       ...MOCK_DECISIONS[0],
@@ -278,19 +294,5 @@ describe("DecisionReviewView", () => {
       expect(screen.getByTestId("empty-state")).toBeInTheDocument();
     });
     expect(screen.getByText("No decisions need review")).toBeInTheDocument();
-  });
-
-  it("navigates back when back button is clicked", async () => {
-    setupSupabaseMock();
-    const onBack = vi.fn();
-    const user = userEvent.setup();
-    renderReview(onBack);
-
-    await waitFor(() => {
-      expect(screen.getByTestId("back-button")).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByTestId("back-button"));
-    expect(onBack).toHaveBeenCalled();
   });
 });
