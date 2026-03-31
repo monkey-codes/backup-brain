@@ -204,7 +204,7 @@ export function ChatShell() {
       </div>
 
       {/* ── Main content ── */}
-      <main className="flex-1 overflow-hidden pt-14 pb-14">
+      <main className="flex flex-1 flex-col overflow-hidden pt-14 pb-14">
         {view === "notifications" ? (
           <NotificationsView onBack={() => setView("chat")} />
         ) : view === "review" ? (

@@ -440,6 +440,20 @@ describe("Nav integration", () => {
     expect(screen.queryByText("Notifications")).not.toBeInTheDocument();
   });
 
+  it("main content area is a flex column container for proper scroll layout", async () => {
+    setupSupabaseMock();
+    await renderChatShell();
+
+    // The <main> element must be flex flex-col so child views can use flex-1
+    // to fill available height and enable scrolling within bounded containers
+    const topBar = screen.getByTestId("top-app-bar");
+    const main = topBar.parentElement!.querySelector("main");
+    expect(main).toBeTruthy();
+    expect(main!.className).toContain("flex");
+    expect(main!.className).toContain("flex-col");
+    expect(main!.className).toContain("overflow-hidden");
+  });
+
   it("no desktop sidebar exists", async () => {
     setupSupabaseMock();
     await renderChatShell();
