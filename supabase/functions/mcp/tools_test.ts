@@ -333,6 +333,62 @@ Deno.test({
         assertExists(parsed.corrected_at);
       });
 
+      // ---- update_decision: value patching ----
+
+      await t.step(
+        "update_decision shallow-merges value without changing review_status",
+        async () => {
+          const reminderId = decisionIds[3]; // reminder decision
+
+          // Update only due_at via value patch
+          const { parsed, isError } = await callTool("update_decision", {
+            decision_id: reminderId,
+            value: { due_at: "2026-05-01T10:00:00Z" },
+          });
+
+          assertEquals(isError, undefined);
+          // due_at should be updated
+          assertEquals(parsed.value.due_at, "2026-05-01T10:00:00Z");
+          // description should be preserved (shallow merge)
+          assertEquals(parsed.value.description, "Call the plumber");
+          // review_status should remain unchanged (pending)
+          assertEquals(parsed.review_status, "pending");
+        }
+      );
+
+      await t.step(
+        "update_decision value patch works alongside correction fields",
+        async () => {
+          const reminderId = decisionIds[3]; // reminder decision
+
+          // Provide both value patch and correction
+          const { parsed, isError } = await callTool("update_decision", {
+            decision_id: reminderId,
+            value: { due_at: "2026-06-01T08:00:00Z" },
+            review_status: "corrected",
+            corrected_value: {
+              due_at: "2026-07-01T08:00:00Z",
+              description: "Call the plumber ASAP",
+            },
+            corrected_by: testUserId,
+          });
+
+          assertEquals(isError, undefined);
+          // value column should have the patched due_at
+          assertEquals(parsed.value.due_at, "2026-06-01T08:00:00Z");
+          // description preserved in value
+          assertEquals(parsed.value.description, "Call the plumber");
+          // correction fields set independently
+          assertEquals(parsed.review_status, "corrected");
+          assertEquals(parsed.corrected_value.due_at, "2026-07-01T08:00:00Z");
+          assertEquals(
+            parsed.corrected_value.description,
+            "Call the plumber ASAP"
+          );
+          assertExists(parsed.corrected_at);
+        }
+      );
+
       // ---- list_decisions ----
 
       await t.step("list_decisions filters by type and status", async () => {
@@ -340,8 +396,11 @@ Deno.test({
           thought_id: thoughtId,
           review_status: "corrected",
         });
-        assertEquals(corrected.length, 1);
-        assertEquals(corrected[0].decision_type, "classification");
+        assertEquals(corrected.length, 2);
+        const correctedTypes = corrected
+          .map((d: { decision_type: string }) => d.decision_type)
+          .sort();
+        assertEquals(correctedTypes, ["classification", "reminder"]);
 
         const { parsed: reminders } = await callTool("list_decisions", {
           thought_id: thoughtId,
