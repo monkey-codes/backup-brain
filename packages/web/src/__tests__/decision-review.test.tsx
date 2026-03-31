@@ -290,6 +290,38 @@ describe("DecisionReviewView", () => {
     );
   });
 
+  it("decision list container has overflow-y-auto for scrolling", async () => {
+    setupSupabaseMock();
+    await renderReview();
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId("decision-card")).toHaveLength(3);
+    });
+
+    // The scrollable list container should have overflow-y-auto
+    const scrollContainer =
+      screen.getAllByTestId("decision-card")[0].parentElement!.parentElement!;
+    expect(scrollContainer.className).toContain("overflow-y-auto");
+    expect(scrollContainer.className).toContain("flex-1");
+  });
+
+  it("view root is a flex column to enable flex-1 height chain", async () => {
+    setupSupabaseMock();
+    await renderReview();
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId("decision-card")).toHaveLength(3);
+    });
+
+    // The DecisionReviewView root should be flex col so children can flex-1
+    const scrollContainer =
+      screen.getAllByTestId("decision-card")[0].parentElement!.parentElement!;
+    const viewRoot = scrollContainer.parentElement!;
+    expect(viewRoot.className).toContain("flex");
+    expect(viewRoot.className).toContain("flex-col");
+    expect(viewRoot.className).toContain("flex-1");
+  });
+
   it("shows empty state when no decisions need review", async () => {
     setupSupabaseMock([]);
     await renderReview();
