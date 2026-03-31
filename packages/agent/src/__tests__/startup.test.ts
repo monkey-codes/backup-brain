@@ -328,6 +328,40 @@ describe("handleUserMessage", () => {
 });
 
 // ---------------------------------------------------------------------------
+// System prompt includes current date
+// ---------------------------------------------------------------------------
+
+describe("processChat injects current date into system prompt", () => {
+  it("includes the current date and time in the system prompt sent to the LLM", async () => {
+    const llm = createMockLLM([
+      { content: "Hello!", tool_calls: [], finish_reason: "stop" },
+    ]);
+
+    const insertFn = vi.fn(async () => ({ error: null }));
+    const supabase = createMockSupabase({
+      messagesResult: {
+        data: [{ role: "user", content: "remind me next week" }],
+        error: null,
+      },
+      sessionResult: { data: { title: null }, error: null },
+      insertFn,
+    });
+
+    const deps = makeDeps({ supabase, llm, systemPrompt: "You are helpful." });
+    await handleUserMessage(deps, "sess-1", "user-1");
+
+    // The system prompt (first argument's first message) should contain the current date
+    const chatCall = (llm.chat as ReturnType<typeof vi.fn>).mock.calls[0];
+    const systemPrompt: string = chatCall[0][0].content;
+
+    expect(systemPrompt).toMatch(/## Current date and time/);
+    // Should contain an ISO-like date string for today
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    expect(systemPrompt).toContain(today);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Health check server
 // ---------------------------------------------------------------------------
 

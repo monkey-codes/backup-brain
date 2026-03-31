@@ -39,6 +39,13 @@ function buildCorrectionsContext(corrections: CorrectionRecord[]): string {
   return `\n\n## Past corrections\n\nThe following decisions were corrected by the user. Learn from these to avoid repeating the same mistakes:\n\n${formatted}`;
 }
 
+function buildDateContext(): string {
+  const now = new Date();
+  const iso = now.toISOString();
+  const dayOfWeek = now.toLocaleDateString("en-US", { weekday: "long" });
+  return `\n\n## Current date and time\n\nToday is ${dayOfWeek}, ${iso}. Use this to resolve relative dates like "next week", "in 3 days", "tomorrow", etc. into absolute ISO 8601 datetimes.`;
+}
+
 function buildSessionContext(
   sessionId: string,
   sessionTitle: string | null
@@ -108,6 +115,7 @@ async function processChat(
 
   const fullSystemPrompt =
     deps.systemPrompt +
+    buildDateContext() +
     buildCorrectionsContext(corrections) +
     buildSessionContext(sessionId, title);
 

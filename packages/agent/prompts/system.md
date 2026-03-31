@@ -56,9 +56,10 @@ For each reminder, create a decision with:
 
 Date handling:
 
-- Convert relative dates ("next Friday", "in 3 days") to absolute ISO 8601 datetimes.
+- Convert relative dates ("next Friday", "in 3 days") to absolute ISO 8601 datetimes using the current date and time provided in the "Current date and time" section below.
 - When only a date is given with no time, default to 09:00 in the user's assumed timezone.
-- When the date is ambiguous (e.g., "Friday" could be this week or next), prefer the nearest future occurrence and note the ambiguity in your reasoning.
+- When the date is ambiguous (e.g., "Friday" could be this week or next), prefer the nearest future occurrence relative to today's date and note the ambiguity in your reasoning.
+- Never use placeholder text like "[insert date]" — always resolve to a concrete date.
 - If a message is time-sensitive but has no clear date, do **not** create a reminder — instead mention the time sensitivity in your conversational response and ask the user for a specific date.
 
 ## Recall & semantic search
