@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -98,17 +98,21 @@ function setupSupabaseMock(notifications = MOCK_NOTIFICATIONS) {
   });
 }
 
-function renderNotifications(onBack = vi.fn()) {
+async function renderNotifications(onBack = vi.fn()) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <NotificationsView onBack={onBack} />
-      </AuthProvider>
-    </QueryClientProvider>
-  );
+  let result: ReturnType<typeof render>;
+  await act(async () => {
+    result = render(
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <NotificationsView onBack={onBack} />
+        </AuthProvider>
+      </QueryClientProvider>
+    );
+  });
+  return result!;
 }
 
 describe("NotificationsView", () => {
@@ -118,7 +122,7 @@ describe("NotificationsView", () => {
 
   it("renders notification cards", async () => {
     setupSupabaseMock();
-    renderNotifications();
+    await renderNotifications();
 
     await waitFor(() => {
       expect(
@@ -135,7 +139,7 @@ describe("NotificationsView", () => {
 
   it("shows notification type badges", async () => {
     setupSupabaseMock();
-    renderNotifications();
+    await renderNotifications();
 
     await waitFor(() => {
       expect(screen.getAllByTestId("notification-card")).toHaveLength(3);
@@ -149,7 +153,7 @@ describe("NotificationsView", () => {
 
   it("shows unread badge count in header", async () => {
     setupSupabaseMock();
-    renderNotifications();
+    await renderNotifications();
 
     await waitFor(() => {
       expect(screen.getByTestId("header-unread-count")).toBeInTheDocument();
@@ -163,7 +167,7 @@ describe("NotificationsView", () => {
 
   it("shows unread dot for unread notifications", async () => {
     setupSupabaseMock();
-    renderNotifications();
+    await renderNotifications();
 
     await waitFor(() => {
       expect(screen.getAllByTestId("notification-card")).toHaveLength(3);
@@ -187,7 +191,7 @@ describe("NotificationsView", () => {
     mockUpdate.mockReturnValue({ eq: mockEq });
 
     const user = userEvent.setup();
-    renderNotifications();
+    await renderNotifications();
 
     await waitFor(() => {
       expect(screen.getAllByTestId("dismiss-button")).toHaveLength(3);
@@ -203,7 +207,7 @@ describe("NotificationsView", () => {
 
   it("shows empty state when no notifications", async () => {
     setupSupabaseMock([]);
-    renderNotifications();
+    await renderNotifications();
 
     await waitFor(() => {
       expect(screen.getByTestId("empty-state")).toBeInTheDocument();
@@ -217,7 +221,7 @@ describe("NotificationsView", () => {
       read_at: "2026-03-26T12:00:00Z",
     })) as typeof MOCK_NOTIFICATIONS;
     setupSupabaseMock(allRead);
-    renderNotifications();
+    await renderNotifications();
 
     await waitFor(() => {
       expect(screen.getAllByTestId("notification-card")).toHaveLength(3);
@@ -231,7 +235,7 @@ describe("NotificationsView", () => {
     setupSupabaseMock();
     const onBack = vi.fn();
     const user = userEvent.setup();
-    renderNotifications(onBack);
+    await renderNotifications(onBack);
 
     await waitFor(() => {
       expect(screen.getByTestId("back-button")).toBeInTheDocument();
@@ -243,7 +247,7 @@ describe("NotificationsView", () => {
 
   it("queries only undismissed notifications", async () => {
     setupSupabaseMock();
-    renderNotifications();
+    await renderNotifications();
 
     await waitFor(() => {
       expect(mockFrom).toHaveBeenCalledWith("notifications");

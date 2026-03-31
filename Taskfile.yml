@@ -15,6 +15,13 @@ tasks:
     desc: Start development servers
     deps: [dev:web, dev:agent, dev:functions]
 
+  dev:stop:
+    desc: Stop all dev servers
+    cmds:
+      - pkill -f "supabase functions serve" || true
+      - pkill -f "tsx --watch src/index.ts" || true
+      - pkill -f "vite.+packages/web" || true
+
   dev:functions:
     desc: Serve Supabase Edge Functions locally
     cmds:
@@ -41,6 +48,10 @@ tasks:
     desc: Type-check all packages
     cmds:
       - pnpm -r run typecheck
+
+  test:
+    desc: Run all tests (agent, web, mcp)
+    deps: [test:agent, test:web, test:mcp]
 
   test:agent:
     desc: Run agent unit and integration tests

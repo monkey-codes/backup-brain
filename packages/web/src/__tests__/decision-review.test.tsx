@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -92,17 +92,21 @@ function setupSupabaseMock(decisions = MOCK_DECISIONS) {
   });
 }
 
-function renderReview(onBack = vi.fn()) {
+async function renderReview(onBack = vi.fn()) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <DecisionReviewView onBack={onBack} />
-      </AuthProvider>
-    </QueryClientProvider>
-  );
+  let result: ReturnType<typeof render>;
+  await act(async () => {
+    result = render(
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <DecisionReviewView onBack={onBack} />
+        </AuthProvider>
+      </QueryClientProvider>
+    );
+  });
+  return result!;
 }
 
 describe("DecisionReviewView", () => {
@@ -112,7 +116,7 @@ describe("DecisionReviewView", () => {
 
   it("renders decision cards with quoted thought content", async () => {
     setupSupabaseMock();
-    renderReview();
+    await renderReview();
 
     await waitFor(() => {
       expect(
@@ -130,7 +134,7 @@ describe("DecisionReviewView", () => {
 
   it("shows confidence, status, and type badges on cards", async () => {
     setupSupabaseMock();
-    renderReview();
+    await renderReview();
 
     await waitFor(() => {
       expect(screen.getAllByTestId("decision-card")).toHaveLength(3);
@@ -150,7 +154,7 @@ describe("DecisionReviewView", () => {
 
   it("renders cards with colored left borders by status", async () => {
     setupSupabaseMock();
-    renderReview();
+    await renderReview();
 
     await waitFor(() => {
       expect(screen.getAllByTestId("decision-card")).toHaveLength(3);
@@ -165,7 +169,7 @@ describe("DecisionReviewView", () => {
 
   it("defaults to needs_review filter via segmented control", async () => {
     setupSupabaseMock();
-    renderReview();
+    await renderReview();
 
     await waitFor(() => {
       expect(mockFrom).toHaveBeenCalledWith("thought_decisions");
@@ -179,7 +183,7 @@ describe("DecisionReviewView", () => {
   it("switches to all filter via segmented control", async () => {
     setupSupabaseMock();
     const user = userEvent.setup();
-    renderReview();
+    await renderReview();
 
     await waitFor(() => {
       expect(screen.getByTestId("filter-all")).toBeInTheDocument();
@@ -197,7 +201,7 @@ describe("DecisionReviewView", () => {
 
   it("shows accept, correct, and discard buttons only for pending decisions", async () => {
     setupSupabaseMock();
-    renderReview();
+    await renderReview();
 
     await waitFor(() => {
       expect(screen.getAllByTestId("decision-card")).toHaveLength(3);
@@ -230,7 +234,7 @@ describe("DecisionReviewView", () => {
     mockUpdate.mockReturnValue({ eq: mockEq });
 
     const user = userEvent.setup();
-    renderReview();
+    await renderReview();
 
     await waitFor(() => {
       expect(screen.getAllByTestId("accept-button")).toHaveLength(2);
@@ -256,7 +260,7 @@ describe("DecisionReviewView", () => {
     mockUpdate.mockReturnValue({ eq: mockEq });
 
     const user = userEvent.setup();
-    renderReview();
+    await renderReview();
 
     await waitFor(() => {
       expect(screen.getAllByTestId("correct-button")).toHaveLength(2);
@@ -288,7 +292,7 @@ describe("DecisionReviewView", () => {
 
   it("shows empty state when no decisions need review", async () => {
     setupSupabaseMock([]);
-    renderReview();
+    await renderReview();
 
     await waitFor(() => {
       expect(screen.getByTestId("empty-state")).toBeInTheDocument();

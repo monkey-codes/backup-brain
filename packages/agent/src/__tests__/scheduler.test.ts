@@ -1,4 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+
+vi.mock("node-cron", () => ({ default: { schedule: vi.fn() } }));
+
 import { checkReminders } from "../scheduler.js";
 
 // ---------------------------------------------------------------------------

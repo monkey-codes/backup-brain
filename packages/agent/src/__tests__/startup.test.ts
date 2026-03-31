@@ -264,6 +264,7 @@ describe("handleUserMessage", () => {
   });
 
   it("retries once on failure then succeeds", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     let callCount = 0;
     const llm: LLMProvider = {
       chat: vi.fn(async () => {
@@ -295,6 +296,7 @@ describe("handleUserMessage", () => {
   });
 
   it("writes error message after retry exhaustion", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     const llm: LLMProvider = {
       chat: vi.fn(async () => {
         throw new Error("Persistent failure");

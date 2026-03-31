@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -46,21 +46,25 @@ function setupAuthMock(session: unknown = null) {
   });
 }
 
-function renderApp(initialRoute = "/") {
+async function renderApp(initialRoute = "/") {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <SessionProvider>
-          <MemoryRouter initialEntries={[initialRoute]}>
-            <AppRoutes />
-          </MemoryRouter>
-        </SessionProvider>
-      </AuthProvider>
-    </QueryClientProvider>
-  );
+  let result: ReturnType<typeof render>;
+  await act(async () => {
+    result = render(
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <SessionProvider>
+            <MemoryRouter initialEntries={[initialRoute]}>
+              <AppRoutes />
+            </MemoryRouter>
+          </SessionProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    );
+  });
+  return result!;
 }
 
 describe("Auth flow", () => {
@@ -70,7 +74,7 @@ describe("Auth flow", () => {
 
   it("redirects unauthenticated users to login", async () => {
     setupAuthMock(null);
-    renderApp("/");
+    await renderApp("/");
 
     await waitFor(() => {
       expect(
@@ -85,7 +89,7 @@ describe("Auth flow", () => {
       access_token: "token",
     });
 
-    renderApp("/");
+    await renderApp("/");
 
     // The shell renders with top app bar and bottom nav
     await waitFor(() => {
@@ -96,7 +100,7 @@ describe("Auth flow", () => {
 
   it("shows login form fields", async () => {
     setupAuthMock(null);
-    renderApp("/login");
+    await renderApp("/login");
 
     await waitFor(() => {
       expect(screen.getByLabelText("Neural ID")).toBeInTheDocument();
@@ -112,7 +116,7 @@ describe("Auth flow", () => {
     });
 
     const user = userEvent.setup();
-    renderApp("/login");
+    await renderApp("/login");
 
     await waitFor(() => {
       expect(screen.getByLabelText("Neural ID")).toBeInTheDocument();
@@ -152,7 +156,7 @@ describe("Auth flow", () => {
     });
 
     const user = userEvent.setup();
-    renderApp("/login");
+    await renderApp("/login");
 
     await waitFor(() => {
       expect(screen.getByLabelText("Neural ID")).toBeInTheDocument();
@@ -187,7 +191,7 @@ describe("Auth flow", () => {
     });
 
     const user = userEvent.setup();
-    renderApp("/");
+    await renderApp("/");
 
     // Open the drawer to access sign out
     await waitFor(() => {
@@ -215,7 +219,20 @@ describe("Auth flow", () => {
       data: { subscription: { unsubscribe: vi.fn() } },
     });
 
-    renderApp("/");
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <SessionProvider>
+            <MemoryRouter initialEntries={["/"]}>
+              <AppRoutes />
+            </MemoryRouter>
+          </SessionProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    );
 
     expect(screen.getByText("Loading...")).toBeInTheDocument();
   });

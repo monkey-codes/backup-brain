@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -97,21 +97,25 @@ function setupSupabaseMock(sessions = MOCK_SESSIONS) {
   });
 }
 
-function renderChatShell() {
+async function renderChatShell() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <SessionProvider>
-          <MemoryRouter>
-            <ChatShell />
-          </MemoryRouter>
-        </SessionProvider>
-      </AuthProvider>
-    </QueryClientProvider>
-  );
+  let result: ReturnType<typeof render>;
+  await act(async () => {
+    result = render(
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <SessionProvider>
+            <MemoryRouter>
+              <ChatShell />
+            </MemoryRouter>
+          </SessionProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    );
+  });
+  return result!;
 }
 
 describe("Chat sessions — drawer", () => {
@@ -122,7 +126,7 @@ describe("Chat sessions — drawer", () => {
   it("opens drawer when menu button is clicked", async () => {
     setupSupabaseMock();
     const user = userEvent.setup();
-    renderChatShell();
+    await renderChatShell();
 
     const drawer = screen.getByTestId("session-drawer");
     expect(drawer).toHaveAttribute("data-open", "false");
@@ -135,7 +139,7 @@ describe("Chat sessions — drawer", () => {
   it("lists sessions in the drawer", async () => {
     setupSupabaseMock();
     const user = userEvent.setup();
-    renderChatShell();
+    await renderChatShell();
 
     // Open drawer
     await user.click(screen.getByTestId("menu-button"));
@@ -149,7 +153,7 @@ describe("Chat sessions — drawer", () => {
   it("shows 'New chat' as title for sessions without a title", async () => {
     setupSupabaseMock();
     const user = userEvent.setup();
-    renderChatShell();
+    await renderChatShell();
 
     await user.click(screen.getByTestId("menu-button"));
 
@@ -177,7 +181,7 @@ describe("Chat sessions — drawer", () => {
     });
 
     const user = userEvent.setup();
-    renderChatShell();
+    await renderChatShell();
 
     // Open drawer first
     await user.click(screen.getByTestId("menu-button"));
@@ -196,7 +200,7 @@ describe("Chat sessions — drawer", () => {
   it("switches to a session when clicking on it and closes drawer", async () => {
     setupSupabaseMock();
     const user = userEvent.setup();
-    renderChatShell();
+    await renderChatShell();
 
     // Open drawer
     await user.click(screen.getByTestId("menu-button"));
@@ -220,7 +224,7 @@ describe("Chat sessions — drawer", () => {
   it("closes drawer when backdrop is tapped", async () => {
     setupSupabaseMock();
     const user = userEvent.setup();
-    renderChatShell();
+    await renderChatShell();
 
     await user.click(screen.getByTestId("menu-button"));
 
@@ -235,7 +239,7 @@ describe("Chat sessions — drawer", () => {
   it("shows user email in drawer", async () => {
     setupSupabaseMock();
     const user = userEvent.setup();
-    renderChatShell();
+    await renderChatShell();
 
     await user.click(screen.getByTestId("menu-button"));
 
@@ -249,7 +253,7 @@ describe("Chat sessions — drawer", () => {
   it("highlights active session with blue left border", async () => {
     setupSupabaseMock();
     const user = userEvent.setup();
-    renderChatShell();
+    await renderChatShell();
 
     await user.click(screen.getByTestId("menu-button"));
 
@@ -278,7 +282,7 @@ describe("Top app bar", () => {
 
   it("renders glassmorphic top app bar with hamburger, title, and bell", async () => {
     setupSupabaseMock();
-    renderChatShell();
+    await renderChatShell();
 
     expect(screen.getByTestId("top-app-bar")).toBeInTheDocument();
     expect(screen.getByTestId("menu-button")).toBeInTheDocument();
@@ -288,7 +292,7 @@ describe("Top app bar", () => {
 
   it("shows session title in top bar", async () => {
     setupSupabaseMock();
-    renderChatShell();
+    await renderChatShell();
 
     expect(screen.getByTestId("session-title")).toHaveTextContent(
       "Backup Brain"
@@ -304,7 +308,7 @@ describe("Bell icon + notifications", () => {
   it("tapping bell icon shows notifications view", async () => {
     setupSupabaseMock();
     const user = userEvent.setup();
-    renderChatShell();
+    await renderChatShell();
 
     await user.click(screen.getByTestId("bell-button"));
 
@@ -316,7 +320,7 @@ describe("Bell icon + notifications", () => {
   it("tapping bell again returns to chat", async () => {
     setupSupabaseMock();
     const user = userEvent.setup();
-    renderChatShell();
+    await renderChatShell();
 
     await user.click(screen.getByTestId("bell-button"));
     await waitFor(() => {
@@ -330,7 +334,7 @@ describe("Bell icon + notifications", () => {
 
   it("hides unread badge when count is zero", async () => {
     setupSupabaseMock();
-    renderChatShell();
+    await renderChatShell();
 
     // With no notifications, badge should not show
     expect(screen.queryByTestId("unread-badge")).not.toBeInTheDocument();
@@ -342,18 +346,18 @@ describe("Bottom nav bar", () => {
     vi.clearAllMocks();
   });
 
-  it("renders bottom nav with Chat and Review tabs", () => {
+  it("renders bottom nav with Chat and Review tabs", async () => {
     setupSupabaseMock();
-    renderChatShell();
+    await renderChatShell();
 
     expect(screen.getByTestId("bottom-nav")).toBeInTheDocument();
     expect(screen.getByTestId("nav-chat")).toBeInTheDocument();
     expect(screen.getByTestId("nav-review")).toBeInTheDocument();
   });
 
-  it("Chat tab is active by default", () => {
+  it("Chat tab is active by default", async () => {
     setupSupabaseMock();
-    renderChatShell();
+    await renderChatShell();
 
     const chatTab = screen.getByTestId("nav-chat");
     expect(chatTab.className).toContain("text-primary");
@@ -362,7 +366,7 @@ describe("Bottom nav bar", () => {
   it("tapping Review tab shows decision review view", async () => {
     setupSupabaseMock();
     const user = userEvent.setup();
-    renderChatShell();
+    await renderChatShell();
 
     await user.click(screen.getByTestId("nav-review"));
 
@@ -378,7 +382,7 @@ describe("Bottom nav bar", () => {
   it("tapping Chat tab returns to chat view", async () => {
     setupSupabaseMock();
     const user = userEvent.setup();
-    renderChatShell();
+    await renderChatShell();
 
     // Switch to review
     await user.click(screen.getByTestId("nav-review"));
@@ -403,7 +407,7 @@ describe("Nav integration", () => {
   it("tapping bell while on review switches to notifications", async () => {
     setupSupabaseMock();
     const user = userEvent.setup();
-    renderChatShell();
+    await renderChatShell();
 
     // Go to review
     await user.click(screen.getByTestId("nav-review"));
@@ -421,7 +425,7 @@ describe("Nav integration", () => {
   it("tapping a bottom tab while on notifications switches back", async () => {
     setupSupabaseMock();
     const user = userEvent.setup();
-    renderChatShell();
+    await renderChatShell();
 
     // Go to notifications
     await user.click(screen.getByTestId("bell-button"));
@@ -436,9 +440,9 @@ describe("Nav integration", () => {
     expect(screen.queryByText("Notifications")).not.toBeInTheDocument();
   });
 
-  it("no desktop sidebar exists", () => {
+  it("no desktop sidebar exists", async () => {
     setupSupabaseMock();
-    renderChatShell();
+    await renderChatShell();
 
     expect(screen.queryByTestId("session-sidebar")).not.toBeInTheDocument();
   });
