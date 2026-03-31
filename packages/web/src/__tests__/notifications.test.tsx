@@ -142,9 +142,9 @@ describe("NotificationsView", () => {
     });
 
     const typeBadges = screen.getAllByTestId("notification-type-badge");
-    expect(typeBadges[0]).toHaveTextContent("reminder");
-    expect(typeBadges[1]).toHaveTextContent("insight");
-    expect(typeBadges[2]).toHaveTextContent("suggestion");
+    expect(typeBadges[0]).toHaveTextContent("Memory Sync");
+    expect(typeBadges[1]).toHaveTextContent("Neural Map Insight");
+    expect(typeBadges[2]).toHaveTextContent("Brain Suggestion");
   });
 
   it("shows unread badge count in header", async () => {

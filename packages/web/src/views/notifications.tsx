@@ -8,18 +8,35 @@ import {
   useMarkNotificationRead,
 } from "@/hooks/use-notifications";
 
+const TYPE_CONFIG: Record<
+  NotificationType,
+  { border: string; badge: string; label: string }
+> = {
+  insight: {
+    border: "border-l-orange-500",
+    badge: "bg-orange-900/40 text-orange-400",
+    label: "Neural Map Insight",
+  },
+  suggestion: {
+    border: "border-l-blue-500",
+    badge: "bg-blue-900/40 text-blue-400",
+    label: "Brain Suggestion",
+  },
+  reminder: {
+    border: "border-l-amber-500",
+    badge: "bg-amber-900/40 text-amber-400",
+    label: "Memory Sync",
+  },
+};
+
 function typeBadge(type: NotificationType) {
-  const colors: Record<NotificationType, string> = {
-    reminder: "bg-amber-100 text-amber-800",
-    suggestion: "bg-blue-100 text-blue-800",
-    insight: "bg-purple-100 text-purple-800",
-  };
+  const config = TYPE_CONFIG[type];
   return (
     <span
       data-testid="notification-type-badge"
-      className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium capitalize ${colors[type]}`}
+      className={`font-label inline-block rounded-full px-2 py-0.5 text-xs uppercase tracking-widest ${config.badge}`}
     >
-      {type}
+      {config.label}
     </span>
   );
 }
@@ -51,13 +68,12 @@ function NotificationCard({
   isDismissing: boolean;
 }) {
   const isUnread = notification.read_at === null;
+  const config = TYPE_CONFIG[notification.type];
 
   return (
     <div
       data-testid="notification-card"
-      className={`relative rounded-lg bg-surface-container-low p-4 ${
-        isUnread ? "border-l-4 border-l-blue-500" : ""
-      }`}
+      className={`relative rounded-lg border-l-4 bg-surface-container-low p-4 ${config.border}`}
       onClick={() => {
         if (isUnread) onMarkRead();
       }}
@@ -94,11 +110,15 @@ function NotificationCard({
       </div>
 
       {/* Content */}
-      <h3 className="mt-1 text-sm font-semibold">{notification.title}</h3>
-      <p className="mt-1 text-sm text-muted-foreground">{notification.body}</p>
+      <h3 className="mt-1 text-sm font-semibold text-on-surface">
+        {notification.title}
+      </h3>
+      <p className="mt-1 text-sm text-on-surface-variant">
+        {notification.body}
+      </p>
 
       {/* Timestamp */}
-      <p className="mt-2 text-xs text-muted-foreground">
+      <p className="mt-2 text-xs text-on-surface-variant">
         {formatDate(notification.created_at)}
       </p>
     </div>
@@ -114,7 +134,7 @@ export function NotificationsView({ onBack }: { onBack: () => void }) {
   return (
     <div className="flex flex-1 flex-col">
       {/* Header */}
-      <div className="border-b px-4 py-3">
+      <div className="bg-surface-container px-4 py-3">
         <div className="mx-auto flex max-w-2xl items-center gap-3">
           <Button
             variant="ghost"
@@ -125,11 +145,13 @@ export function NotificationsView({ onBack }: { onBack: () => void }) {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h2 className="text-lg font-semibold">Notifications</h2>
+          <h2 className="text-lg font-semibold text-on-surface">
+            Notifications
+          </h2>
           {unreadCount > 0 && (
             <span
               data-testid="header-unread-count"
-              className="rounded-full bg-blue-500 px-2 py-0.5 text-xs font-medium text-white"
+              className="rounded-full bg-primary-container px-2 py-0.5 text-xs font-medium text-white"
             >
               {unreadCount} unread
             </span>
@@ -142,7 +164,7 @@ export function NotificationsView({ onBack }: { onBack: () => void }) {
         <div className="mx-auto flex max-w-2xl flex-col gap-3">
           {isLoading && (
             <div className="flex justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <Loader2 className="h-6 w-6 animate-spin text-on-surface-variant" />
             </div>
           )}
           {!isLoading && (!notifications || notifications.length === 0) && (
@@ -150,9 +172,9 @@ export function NotificationsView({ onBack }: { onBack: () => void }) {
               data-testid="empty-state"
               className="flex flex-col items-center py-12 text-center"
             >
-              <Bell className="mb-3 h-12 w-12 text-muted-foreground/30" />
-              <p className="text-muted-foreground">No notifications</p>
-              <p className="mt-1 text-sm text-muted-foreground/70">
+              <Bell className="mb-3 h-12 w-12 text-on-surface-variant/30" />
+              <p className="text-on-surface-variant">No notifications</p>
+              <p className="mt-1 text-sm text-on-surface-variant/70">
                 Reminders and insights will appear here
               </p>
             </div>
