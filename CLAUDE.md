@@ -69,6 +69,17 @@ Web requires: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
 - Agent uses TypeScript project references to consume `@backup-brain/shared`.
 - Web and agent test with Vitest. Web uses jsdom environment + React Testing Library.
 
+## Troubleshooting
+
+### Supabase Docker container conflicts
+
+`task db:start` / `supabase start` can fail with "container name already in use" errors when stale containers exist (e.g. after an unclean shutdown). Fix:
+
+```bash
+docker rm -f $(docker ps -aq --filter "name=supabase")
+npx supabase start
+```
+
 ## Reference
 
 `ARCHITECTURE.md` contains the full system design document including schema details, deployment topology, and design decisions.
