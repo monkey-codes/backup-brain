@@ -176,8 +176,12 @@ tool(
       .describe("Pre-computed query embedding vector"),
     match_threshold: z.number().min(0).max(1).default(0.5),
     match_count: z.number().int().min(1).max(50).default(10),
+    include_decisions: z
+      .boolean()
+      .default(false)
+      .describe("When true, fetch and nest decisions for each matched thought"),
   }),
-  async ({ embedding, match_threshold, match_count }) => {
+  async ({ embedding, match_threshold, match_count, include_decisions }) => {
     const { data, error } = await supabase.rpc("match_thoughts", {
       query_embedding: `[${embedding.join(",")}]`,
       match_threshold,
@@ -185,6 +189,32 @@ tool(
     });
 
     if (error) return err(error.message);
+
+    if (include_decisions && data && data.length > 0) {
+      const thoughtIds = data.map((t: { id: string }) => t.id);
+      const { data: decisions, error: dErr } = await supabase
+        .from("thought_decisions")
+        .select(
+          "id, thought_id, decision_type, value, confidence, reasoning, review_status, corrected_value, corrected_by, corrected_at, created_at"
+        )
+        .in("thought_id", thoughtIds);
+
+      if (dErr) return err(dErr.message);
+
+      // Group decisions by thought_id
+      const byThought = new Map<string, unknown[]>();
+      for (const d of decisions ?? []) {
+        const arr = byThought.get(d.thought_id) ?? [];
+        arr.push(d);
+        byThought.set(d.thought_id, arr);
+      }
+
+      // Nest decisions onto each thought
+      for (const thought of data) {
+        thought.decisions = byThought.get(thought.id) ?? [];
+      }
+    }
+
     return ok(data);
   }
 );
