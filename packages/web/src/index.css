@@ -1,33 +1,79 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: oklch(1 0 0);
-  --color-foreground: oklch(0.145 0 0);
-  --color-card: oklch(1 0 0);
-  --color-card-foreground: oklch(0.145 0 0);
-  --color-primary: oklch(0.205 0 0);
-  --color-primary-foreground: oklch(0.985 0 0);
-  --color-secondary: oklch(0.97 0 0);
-  --color-secondary-foreground: oklch(0.205 0 0);
-  --color-muted: oklch(0.97 0 0);
-  --color-muted-foreground: oklch(0.556 0 0);
-  --color-accent: oklch(0.97 0 0);
-  --color-accent-foreground: oklch(0.205 0 0);
-  --color-destructive: oklch(0.577 0.245 27.325);
-  --color-destructive-foreground: oklch(0.577 0.245 27.325);
-  --color-border: oklch(0.922 0 0);
-  --color-input: oklch(0.922 0 0);
-  --color-ring: oklch(0.708 0 0);
+  /* MD3 Surface tiers */
+  --color-surface: #111319;
+  --color-surface-container-lowest: #0c0e14;
+  --color-surface-container-low: #191b22;
+  --color-surface-container: #1e2028;
+  --color-surface-container-high: #282a30;
+  --color-surface-container-highest: #33343b;
+
+  /* MD3 On-surface */
+  --color-on-surface: #e2e2eb;
+  --color-on-surface-variant: #c2c6d6;
+
+  /* MD3 Primary */
+  --color-primary: #adc6ff;
+  --color-primary-container: #4d8eff;
+  --color-on-primary: #111319;
+
+  /* MD3 Secondary */
+  --color-secondary-container: #304671;
+  --color-on-secondary-container: #dae2ff;
+
+  /* MD3 Tertiary */
+  --color-tertiary: #ffb786;
+  --color-tertiary-container: #df7412;
+
+  /* MD3 Error */
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+
+  /* MD3 Outline */
+  --color-outline: #8c909f;
+  --color-outline-variant: #424754;
+
+  /* Backward-compat aliases (Shadcn names → MD3) */
+  --color-background: #111319;
+  --color-foreground: #e2e2eb;
+  --color-card: #191b22;
+  --color-card-foreground: #e2e2eb;
+  --color-primary-foreground: #111319;
+  --color-secondary: #304671;
+  --color-secondary-foreground: #dae2ff;
+  --color-muted: #282a30;
+  --color-muted-foreground: #c2c6d6;
+  --color-accent: #282a30;
+  --color-accent-foreground: #e2e2eb;
+  --color-destructive: #ffb4ab;
+  --color-destructive-foreground: #690005;
+  --color-border: #424754;
+  --color-input: #424754;
+  --color-ring: #adc6ff;
+
+  /* Border radius */
   --radius-sm: 0.25rem;
-  --radius-md: 0.375rem;
+  --radius-md: 0.75rem;
   --radius-lg: 0.5rem;
   --radius-xl: 0.75rem;
+
+  /* Font families */
+  --font-headline: "Space Grotesk", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-label: "Inter", sans-serif;
 }
 
 body {
   @apply bg-background text-foreground antialiased;
-  font-family:
-    system-ui,
-    -apple-system,
-    sans-serif;
+  font-family: var(--font-body);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-headline);
 }

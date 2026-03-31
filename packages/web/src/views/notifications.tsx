@@ -55,7 +55,7 @@ function NotificationCard({
   return (
     <div
       data-testid="notification-card"
-      className={`relative rounded-lg border bg-card p-4 shadow-sm ${
+      className={`relative rounded-lg bg-surface-container-low p-4 ${
         isUnread ? "border-l-4 border-l-blue-500" : ""
       }`}
       onClick={() => {

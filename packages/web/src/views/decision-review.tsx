@@ -157,7 +157,7 @@ function DecisionCard({
   return (
     <div
       data-testid="decision-card"
-      className="rounded-lg border bg-card p-4 shadow-sm"
+      className="rounded-lg bg-surface-container-low p-4"
     >
       {/* Thought context */}
       {decision.thought && (
