@@ -69,7 +69,7 @@ tasks:
     desc: Run MCP server integration tests (requires supabase start + functions serve)
     dir: supabase/functions
     cmds:
-      - deno test --no-check --no-lock --allow-net --allow-env mcp/tools_test.ts
+      - deno test --no-check --no-lock --allow-net --allow-env --env=../../.env mcp/tools_test.ts
 
   env:
     desc: Write .env from local Supabase status (preserves OPENAI_API_KEY)
