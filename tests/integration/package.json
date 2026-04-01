@@ -1,0 +1,9 @@
+{
+  "name": "backup-brain-integration-tests",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "@supabase/supabase-js": "^2.49.4"
+  }
+}
