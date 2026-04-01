@@ -71,6 +71,47 @@ tasks:
     cmds:
       - deno test --no-check --no-lock --allow-net --allow-env --env=../../.env mcp/tools_test.ts
 
+  test:integration:
+    desc: Run end-to-end integration tests (full system — stops, resets, starts, tests)
+    cmds:
+      # 1. Stop everything
+      - task dev:stop
+      - supabase stop --no-backup || true
+
+      # 2. Start fresh
+      - supabase start
+      - supabase db reset
+
+      # 3. Generate env
+      - task env
+
+      # 4. Start dev servers (backgrounded)
+      - task dev &
+
+      # 5. Wait for readiness
+      - |
+        echo "Waiting for web server (localhost:5173)..."
+        for i in $(seq 1 60); do
+          curl -sf http://localhost:5173 > /dev/null 2>&1 && break
+          sleep 2
+        done
+        curl -sf http://localhost:5173 > /dev/null 2>&1 || { echo "Web server did not start"; exit 1; }
+        echo "Web server ready."
+
+        echo "Waiting for agent health (localhost:3001)..."
+        for i in $(seq 1 60); do
+          curl -sf http://localhost:3001 > /dev/null 2>&1 && break
+          sleep 2
+        done
+        curl -sf http://localhost:3001 > /dev/null 2>&1 || { echo "Agent health endpoint did not start"; exit 1; }
+        echo "Agent ready."
+
+      # 6. Run Playwright tests (passthrough CLI args for --headed etc.)
+      - cmd: node --env-file=../../.env node_modules/.bin/playwright test {{.CLI_ARGS}}
+        dir: tests/integration
+
+      # 7. Services left running for debugging
+
   env:
     desc: Write .env from local Supabase status (preserves OPENAI_API_KEY)
     cmds:
