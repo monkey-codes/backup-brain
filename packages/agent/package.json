@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@backup-brain/shared": "workspace:*",
-    "@supabase/supabase-js": "^2.100.0",
+    "@supabase/supabase-js": "^2.101.1",
     "node-cron": "^4.2.1",
     "openai": "^6.33.0"
   },
