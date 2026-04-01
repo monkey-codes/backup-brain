@@ -1,3 +1,5 @@
+eval "$(mise activate zsh)"
+gitleaks protect --staged --verbose
 npx lint-staged
 pnpm -r run typecheck
 pnpm -C packages/agent exec vitest run
