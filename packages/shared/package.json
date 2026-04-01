@@ -7,7 +7,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc -b"
   },
   "devDependencies": {
     "typescript": "^5.7.0"
