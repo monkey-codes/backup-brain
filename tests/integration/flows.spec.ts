@@ -209,3 +209,70 @@ test("update a reminder cross-session — reschedule changes due_at in the datab
   expect(new Date(updatedDueAt).toString()).not.toBe("Invalid Date");
   expect(updatedDueAt).not.toBe(originalDueAt);
 });
+
+test("correct a decision cross-session — sets review_status and corrected_value", async ({
+  page,
+}) => {
+  const userId = getTestUserId();
+
+  // --- Session A: capture a thought ---
+  await page.goto("/");
+  await page
+    .locator('[data-testid="chat-input"]')
+    .waitFor({ state: "visible" });
+
+  const message = "I need to fix the leaky faucet in the kitchen";
+  await sendMessage(page, message);
+  await waitForAssistantReply(page);
+
+  // Find the thought
+  const thoughts = await queryDb<{
+    id: string;
+    content: string;
+    created_by: string;
+  }>("thoughts", { created_by: userId });
+
+  const thought = thoughts.find(
+    (t) => t.content.includes("faucet") || t.content.includes("kitchen")
+  );
+  expect(thought).toBeDefined();
+
+  // Get the classification decision
+  const decisions = await queryDb<{
+    id: string;
+    thought_id: string;
+    decision_type: string;
+    value: Record<string, unknown>;
+    review_status: string;
+  }>("thought_decisions", {
+    thought_id: thought!.id,
+    decision_type: "classification",
+  });
+
+  expect(decisions.length).toBeGreaterThanOrEqual(1);
+  const classificationId = decisions[0].id;
+  const originalCategory = decisions[0].value.category as string;
+  expect(originalCategory).toBeDefined();
+
+  // --- Session B: correct the decision (no prior chat context) ---
+  await createNewSession(page);
+
+  const correctionMessage = `The thought about the faucet was classified wrong, it should be home_maintenance`;
+  await sendMessage(page, correctionMessage);
+  await waitForAssistantReply(page);
+
+  // Assert: the classification decision has review_status = 'corrected' and corrected_value is set
+  const updatedDecisions = await queryDb<{
+    id: string;
+    decision_type: string;
+    review_status: string;
+    corrected_value: Record<string, unknown> | null;
+  }>("thought_decisions", {
+    id: classificationId,
+  });
+
+  expect(updatedDecisions.length).toBe(1);
+  expect(updatedDecisions[0].review_status).toBe("corrected");
+  expect(updatedDecisions[0].corrected_value).toBeDefined();
+  expect(updatedDecisions[0].corrected_value).not.toBeNull();
+});
