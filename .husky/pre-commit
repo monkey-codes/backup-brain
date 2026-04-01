@@ -1,3 +1,4 @@
+#!/usr/bin/env zsh
 eval "$(mise activate zsh)"
 gitleaks protect --staged --verbose
 npx lint-staged
