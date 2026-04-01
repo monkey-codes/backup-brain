@@ -1,7 +1,12 @@
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { sendMessage, waitForAssistantReply, queryDb } from "./helpers.js";
+import {
+  sendMessage,
+  waitForAssistantReply,
+  createNewSession,
+  queryDb,
+} from "./helpers.js";
 
 // Read the test user ID saved by global-setup
 const testUserPath = resolve(import.meta.dirname, ".test-user.json");
@@ -135,4 +140,72 @@ test("capture a reminder — creates reminder decision with due_at and descripti
   expect(reminder.value).toHaveProperty("description");
   expect(typeof reminder.value.description).toBe("string");
   expect((reminder.value.description as string).length).toBeGreaterThan(0);
+});
+
+test("update a reminder cross-session — reschedule changes due_at in the database", async ({
+  page,
+}) => {
+  const userId = getTestUserId();
+
+  // --- Session A: capture a reminder ---
+  await page.goto("/");
+  await page
+    .locator('[data-testid="chat-input"]')
+    .waitFor({ state: "visible" });
+
+  const message = "Remind me to call the plumber tomorrow at 9am";
+  await sendMessage(page, message);
+  await waitForAssistantReply(page);
+
+  // Find the thought with reminder content
+  const thoughts = await queryDb<{
+    id: string;
+    content: string;
+    created_by: string;
+  }>("thoughts", { created_by: userId });
+
+  const thought = thoughts.find(
+    (t) => t.content.includes("plumber") || t.content.includes("call")
+  );
+  expect(thought).toBeDefined();
+
+  // Get the original reminder decision and its due_at
+  const originalDecisions = await queryDb<{
+    id: string;
+    thought_id: string;
+    decision_type: string;
+    value: Record<string, unknown>;
+  }>("thought_decisions", {
+    thought_id: thought!.id,
+    decision_type: "reminder",
+  });
+
+  expect(originalDecisions.length).toBeGreaterThanOrEqual(1);
+  const originalDueAt = originalDecisions[0].value.due_at as string;
+  expect(originalDueAt).toBeDefined();
+  const decisionId = originalDecisions[0].id;
+
+  // --- Session B: reschedule the reminder (no prior chat context) ---
+  await createNewSession(page);
+
+  const rescheduleMessage =
+    "Actually, move the plumber reminder to next week same time";
+  await sendMessage(page, rescheduleMessage);
+  await waitForAssistantReply(page);
+
+  // Assert: the reminder decision's due_at has changed
+  const updatedDecisions = await queryDb<{
+    id: string;
+    thought_id: string;
+    decision_type: string;
+    value: Record<string, unknown>;
+  }>("thought_decisions", {
+    id: decisionId,
+  });
+
+  expect(updatedDecisions.length).toBe(1);
+  const updatedDueAt = updatedDecisions[0].value.due_at as string;
+  expect(updatedDueAt).toBeDefined();
+  expect(new Date(updatedDueAt).toString()).not.toBe("Invalid Date");
+  expect(updatedDueAt).not.toBe(originalDueAt);
 });
