@@ -78,3 +78,61 @@ test("capture a thought — creates thought and decisions in the database", asyn
   expect(classification!.value).toHaveProperty("category");
   expect(typeof classification!.value.category).toBe("string");
 });
+
+test("capture a reminder — creates reminder decision with due_at and description", async ({
+  page,
+}) => {
+  const userId = getTestUserId();
+
+  // Navigate to the app (already authenticated via storageState)
+  await page.goto("/");
+  await page
+    .locator('[data-testid="chat-input"]')
+    .waitFor({ state: "visible" });
+
+  // Send a message with a time reference
+  const message = "Remind me to call the plumber tomorrow at 9am";
+  await sendMessage(page, message);
+
+  // Wait for the agent to reply in the UI
+  await waitForAssistantReply(page);
+
+  // Assert: a thoughts row was created by this user containing reminder content
+  const thoughts = await queryDb<{
+    id: string;
+    content: string;
+    created_by: string;
+  }>("thoughts", { created_by: userId });
+
+  const thought = thoughts.find(
+    (t) => t.content.includes("plumber") || t.content.includes("call")
+  );
+  expect(thought).toBeDefined();
+
+  // Assert: a thought_decisions row with decision_type = 'reminder' exists
+  const decisions = await queryDb<{
+    id: string;
+    thought_id: string;
+    decision_type: string;
+    value: Record<string, unknown>;
+  }>("thought_decisions", {
+    thought_id: thought!.id,
+    decision_type: "reminder",
+  });
+
+  expect(decisions.length).toBeGreaterThanOrEqual(1);
+
+  const reminder = decisions[0];
+
+  // Assert: value contains due_at (a date string) and description (a string)
+  expect(reminder.value).toHaveProperty("due_at");
+  expect(typeof reminder.value.due_at).toBe("string");
+  // due_at should be parseable as a date
+  expect(new Date(reminder.value.due_at as string).toString()).not.toBe(
+    "Invalid Date"
+  );
+
+  expect(reminder.value).toHaveProperty("description");
+  expect(typeof reminder.value.description).toBe("string");
+  expect((reminder.value.description as string).length).toBeGreaterThan(0);
+});
