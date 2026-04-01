@@ -1,4 +1,3 @@
-#!/usr/bin/env sh
 eval "$(mise activate bash)"
 gitleaks protect --staged --verbose
 npx lint-staged
