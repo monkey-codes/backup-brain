@@ -74,7 +74,7 @@ export async function handleUserMessage(
       content: response,
     });
   } catch (error) {
-    console.error(`Error processing session ${sessionId}, retrying...`, error);
+    console.error("Error processing session %s, retrying...", sessionId, error);
 
     // Retry once
     try {
@@ -86,7 +86,7 @@ export async function handleUserMessage(
         content: response,
       });
     } catch (retryError) {
-      console.error(`Retry failed for session ${sessionId}:`, retryError);
+      console.error("Retry failed for session %s:", sessionId, retryError);
 
       await deps.supabase.from("chat_messages").insert({
         session_id: sessionId,
