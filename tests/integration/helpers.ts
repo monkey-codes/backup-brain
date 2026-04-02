@@ -99,12 +99,37 @@ export async function waitForAssistantReply(page: Page): Promise<string> {
 }
 
 /**
+ * Navigate to the app and create the first chat session.
+ *
+ * On first load with no sessions, the app shows "Select a conversation or
+ * start a new one" — there is no chat input until a session is created.
+ * This helper navigates to "/", clicks "New Chat", and waits for the chat
+ * input to become visible.
+ */
+export async function navigateAndStartChat(page: Page): Promise<void> {
+  await page.goto("/");
+
+  // Open the session drawer (closed by default, button is off-viewport)
+  await page.locator('[data-testid="menu-button"]').click();
+  await page
+    .locator('[data-testid="session-drawer"][data-open="true"]')
+    .waitFor({ state: "visible", timeout: 10_000 });
+
+  // Click "+ New Chat"
+  await page.locator('[data-testid="new-chat-button"]').click();
+
+  // Wait for drawer to close and chat input to appear
+  await page
+    .locator('[data-testid="chat-input"]')
+    .waitFor({ state: "visible", timeout: 15_000 });
+}
+
+/**
  * Create a new chat session via the UI and wait for it to load.
  *
  * Opens the session drawer, clicks "+ New Chat", waits for the drawer to
- * close and the chat input to be ready. The app uses a single "/" route with
- * React state for sessions, so we detect readiness by waiting for the drawer
- * to close and no assistant messages to be present (fresh session).
+ * close and the chat input to be ready. Use this when already in an active
+ * session (e.g., for cross-session tests).
  */
 export async function createNewSession(page: Page): Promise<void> {
   // Open the session drawer

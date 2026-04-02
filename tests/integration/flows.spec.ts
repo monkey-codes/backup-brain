@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import {
   sendMessage,
   waitForAssistantReply,
+  navigateAndStartChat,
   createNewSession,
   queryDb,
 } from "./helpers.js";
@@ -21,11 +22,8 @@ test("capture a thought — creates thought and decisions in the database", asyn
 }) => {
   const userId = getTestUserId();
 
-  // Navigate to the app (already authenticated via storageState)
-  await page.goto("/");
-  await page
-    .locator('[data-testid="chat-input"]')
-    .waitFor({ state: "visible" });
+  // Navigate to the app and start a new chat session
+  await navigateAndStartChat(page);
 
   // Send a natural language message
   const message = "I need to fix the leaky faucet in the kitchen";
@@ -89,11 +87,8 @@ test("capture a reminder — creates reminder decision with due_at and descripti
 }) => {
   const userId = getTestUserId();
 
-  // Navigate to the app (already authenticated via storageState)
-  await page.goto("/");
-  await page
-    .locator('[data-testid="chat-input"]')
-    .waitFor({ state: "visible" });
+  // Navigate to the app and start a new chat session
+  await navigateAndStartChat(page);
 
   // Send a message with a time reference
   const message = "Remind me to call the plumber tomorrow at 9am";
@@ -148,10 +143,7 @@ test("update a reminder cross-session — reschedule changes due_at in the datab
   const userId = getTestUserId();
 
   // --- Session A: capture a reminder ---
-  await page.goto("/");
-  await page
-    .locator('[data-testid="chat-input"]')
-    .waitFor({ state: "visible" });
+  await navigateAndStartChat(page);
 
   const message = "Remind me to call the plumber tomorrow at 9am";
   await sendMessage(page, message);
@@ -216,10 +208,7 @@ test("correct a decision cross-session — sets review_status and corrected_valu
   const userId = getTestUserId();
 
   // --- Session A: capture a thought ---
-  await page.goto("/");
-  await page
-    .locator('[data-testid="chat-input"]')
-    .waitFor({ state: "visible" });
+  await navigateAndStartChat(page);
 
   const message = "I need to fix the leaky faucet in the kitchen";
   await sendMessage(page, message);

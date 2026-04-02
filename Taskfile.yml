@@ -76,20 +76,30 @@ tasks:
     cmds:
       # 1. Stop everything
       - task dev:stop
+      - lsof -ti:5173,3001 | xargs kill -9 2>/dev/null || true
       - supabase stop --no-backup || true
 
       # 2. Start fresh
-      - supabase start
+      - supabase start --ignore-health-check
       - supabase db reset
 
-      # 3. Generate env
+      # 3. Generate env & wait for Supabase to be fully ready after db:reset
       - task env
-
-      # 4. Start dev servers (backgrounded)
-      - task dev &
-
-      # 5. Wait for readiness
       - |
+        echo "Waiting for Supabase API (localhost:54321)..."
+        for i in $(seq 1 30); do
+          curl -sf http://localhost:54321/rest/v1/ -H "apikey: $(grep '^VITE_SUPABASE_ANON_KEY=' .env | cut -d= -f2-)" > /dev/null 2>&1 && break
+          sleep 2
+        done
+        echo "Supabase API ready."
+
+      # 4. Start dev servers in the background & wait for readiness
+      - |
+        # Start each dev server as a background process
+        cd packages/web && pnpm run dev &
+        cd packages/agent && node --env-file=../../.env --import tsx --watch src/index.ts &
+        supabase functions serve --no-verify-jwt &
+
         echo "Waiting for web server (localhost:5173)..."
         for i in $(seq 1 60); do
           curl -sf http://localhost:5173 > /dev/null 2>&1 && break
@@ -106,11 +116,13 @@ tasks:
         curl -sf http://localhost:3001 > /dev/null 2>&1 || { echo "Agent health endpoint did not start"; exit 1; }
         echo "Agent ready."
 
-      # 6. Run Playwright tests (passthrough CLI args for --headed etc.)
-      - cmd: node --env-file=../../.env node_modules/.bin/playwright test {{.CLI_ARGS}}
-        dir: tests/integration
+      # 5. Run Playwright tests (passthrough CLI args for --headed etc.)
+      - |
+        cd {{.ROOT_DIR}}/tests/integration
+        set -a && . {{.ROOT_DIR}}/.env && set +a
+        npx playwright test {{.CLI_ARGS}}
 
-      # 7. Services left running for debugging
+      # 6. Services left running for debugging
 
   env:
     desc: Write .env from local Supabase status (preserves OPENAI_API_KEY)
