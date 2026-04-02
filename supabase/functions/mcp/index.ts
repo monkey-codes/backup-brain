@@ -174,7 +174,7 @@ tool(
       .array(z.number())
       .length(1536)
       .describe("Pre-computed query embedding vector"),
-    match_threshold: z.number().min(0).max(1).default(0.5),
+    match_threshold: z.number().min(0).max(1).default(0.3),
     match_count: z.number().int().min(1).max(50).default(10),
     include_decisions: z
       .boolean()

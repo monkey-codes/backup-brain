@@ -7,6 +7,7 @@ import {
   navigateAndStartChat,
   createNewSession,
   queryDb,
+  cleanupUserData,
 } from "./helpers.js";
 
 // Read the test user ID saved by global-setup
@@ -16,6 +17,12 @@ function getTestUserId(): string {
   const raw = readFileSync(testUserPath, "utf-8");
   return JSON.parse(raw).userId;
 }
+
+// Clean up all user data between tests to ensure isolation
+test.beforeEach(async () => {
+  const userId = getTestUserId();
+  await cleanupUserData(userId);
+});
 
 test("capture a thought — creates thought and decisions in the database", async ({
   page,
@@ -246,7 +253,7 @@ test("correct a decision cross-session — sets review_status and corrected_valu
   // --- Session B: correct the decision (no prior chat context) ---
   await createNewSession(page);
 
-  const correctionMessage = `The thought about the faucet was classified wrong, it should be home_maintenance`;
+  const correctionMessage = `No, you classified the thought about the faucet wrong. It should be in the Plumbing category, not Home Maintenance`;
   await sendMessage(page, correctionMessage);
   await waitForAssistantReply(page);
 
