@@ -31,7 +31,7 @@ Single test file: `pnpm -C packages/agent exec vitest run src/some-file.test.ts`
 - **`packages/shared`** — TypeScript types shared across packages (database entities, decision types, review status). No runtime code.
 - **`packages/web`** — React 19 + Vite frontend. Tailwind 4, React Router 7, TanStack Query. Path alias `@/*` maps to `src/*`.
 - **`packages/agent`** — Node.js agent process. Uses OpenAI SDK (gpt-4o) with ReAct loop pattern, consuming tools from the MCP server. Runs scheduled jobs via node-cron.
-- **`supabase/functions/mcp`** — Deno Edge Function exposing 8 MCP tools (Hono framework, Zod validation). Tools: `capture_thought`, `update_thought`, `search_thoughts`, `list_thoughts`, `create_decision`, `update_decision`, `list_decisions`, `create_notification`.
+- **`supabase/functions/mcp`** — Deno Edge Function exposing 10 MCP tools (Hono framework, Zod validation). Tools: `capture_thought`, `update_thought`, `search_thoughts`, `list_thoughts`, `create_decision`, `update_decision`, `list_decisions`, `create_group`, `create_notification`, `set_session_title`.
 
 ### Communication Pattern
 

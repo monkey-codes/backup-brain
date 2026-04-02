@@ -112,7 +112,7 @@ Corrections are preserved alongside original decisions for the agent to learn fr
 { "due_at": "2026-04-01T09:00:00Z", "description": "Call the plumber" }
 
 // tag — one decision per tag
-{ "tag": "urgent" }
+{ "label": "urgent" }
 ```
 
 **Categories** are freeform strings, not a fixed enum. The agent is instructed to prefer a seed list of common categories but can create new ones when nothing fits. The proactive reviewer consolidates duplicates over time.
@@ -211,6 +211,7 @@ The MCP server exposes these tools via the MCP protocol. Authenticated with the 
 | `list_decisions`      | Query decisions (e.g., pending reminders, low-confidence)                                                                      |
 | `create_group`        | Create/update thought groups                                                                                                   |
 | `create_notification` | Surface an insight/reminder/suggestion to the user                                                                             |
+| `set_session_title`   | Set or update the title of a chat session                                                                                      |
 
 `capture_thought` is atomic — it accepts thought text, a pre-computed embedding, and an array of decisions, inserts the thought, and inserts all decisions in a single database transaction. Returns the created IDs so the agent can reference specific decisions later:
 
@@ -404,7 +405,7 @@ Once an embedding dimension (1536) is chosen, changing it requires re-embedding 
 
 ```typescript
 interface LLMProvider {
-  chat(messages: Message[], tools?: Tool[]): Promise<LLMResponse>;
+  chat(messages: LLMMessage[], tools: ToolDefinition[]): Promise<LLMResponse>;
 }
 ```
 
@@ -421,7 +422,7 @@ OpenAI first (gpt-4o for reasoning, gpt-4o-mini as an option for cheaper calls l
 
 ## Project Structure
 
-Monorepo with npm workspaces. Shared TypeScript types between web app and agent.
+Monorepo with pnpm workspaces. Shared TypeScript types between web app and agent.
 
 ```
 open-brain/
