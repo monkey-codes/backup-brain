@@ -1,5 +1,5 @@
-#!/usr/bin/env zsh
-eval "$(mise activate zsh)"
+#!/usr/bin/env sh
+eval "$(mise activate bash)"
 gitleaks protect --staged --verbose
 npx lint-staged
 pnpm -r run typecheck
