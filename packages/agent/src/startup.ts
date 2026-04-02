@@ -131,6 +131,11 @@ async function processChat(
         args.session_id = sessionId;
         args.created_by = userId;
       },
+      update_decision: (args) => {
+        if (args.review_status === "corrected" && !args.corrected_by) {
+          args.corrected_by = userId;
+        }
+      },
       set_session_title: (args) => {
         args.session_id = sessionId;
       },

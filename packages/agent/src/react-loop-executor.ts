@@ -89,7 +89,7 @@ function rewriteToolsForLLM(tools: ToolDefinition[]): ToolDefinition[] {
             },
             match_threshold: {
               type: "number",
-              description: "Minimum similarity threshold (0-1, default 0.5)",
+              description: "Minimum similarity threshold (0-1, default 0.3)",
             },
             match_count: {
               type: "number",
@@ -102,6 +102,38 @@ function rewriteToolsForLLM(tools: ToolDefinition[]): ToolDefinition[] {
             },
           },
           required: ["query"],
+        },
+      };
+    }
+    if (t.name === "update_decision") {
+      return {
+        name: t.name,
+        description: t.description,
+        parameters: {
+          type: "object",
+          properties: {
+            decision_id: {
+              type: "string",
+              description: "UUID of the decision to update",
+            },
+            review_status: {
+              type: "string",
+              enum: ["pending", "accepted", "corrected"],
+              description:
+                "Set to 'corrected' when the user is correcting a mistake you made",
+            },
+            corrected_value: {
+              type: "object",
+              description:
+                "The corrected value (use with review_status: corrected)",
+            },
+            value: {
+              type: "object",
+              description:
+                "Partial JSON patch to shallow-merge into the existing value column (for user-initiated changes, not corrections)",
+            },
+          },
+          required: ["decision_id"],
         },
       };
     }

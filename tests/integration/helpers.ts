@@ -51,6 +51,43 @@ export async function queryDb<T = Record<string, unknown>>(
   return (data ?? []) as T[];
 }
 
+/**
+ * Delete all data owned by a test user (thoughts, decisions, messages, sessions, notifications).
+ * Use in beforeEach to ensure test isolation.
+ */
+export async function cleanupUserData(userId: string): Promise<void> {
+  const supabase = getServiceClient();
+
+  // Get all sessions for the user
+  const { data: sessions } = await supabase
+    .from("chat_sessions")
+    .select("id")
+    .eq("user_id", userId);
+
+  if (sessions?.length) {
+    const sessionIds = sessions.map((s) => s.id);
+    await supabase.from("chat_messages").delete().in("session_id", sessionIds);
+    await supabase.from("chat_sessions").delete().eq("user_id", userId);
+  }
+
+  // Get all thoughts for the user
+  const { data: thoughts } = await supabase
+    .from("thoughts")
+    .select("id")
+    .eq("created_by", userId);
+
+  if (thoughts?.length) {
+    const thoughtIds = thoughts.map((t) => t.id);
+    await supabase
+      .from("thought_decisions")
+      .delete()
+      .in("thought_id", thoughtIds);
+    await supabase.from("thoughts").delete().eq("created_by", userId);
+  }
+
+  await supabase.from("notifications").delete().eq("user_id", userId);
+}
+
 // ---------------------------------------------------------------------------
 // UI helpers
 // ---------------------------------------------------------------------------
