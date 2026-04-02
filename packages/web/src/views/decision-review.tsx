@@ -265,7 +265,7 @@ export function DecisionReviewView({ onBack }: { onBack: () => void }) {
   const correctMutation = useCorrectDecision();
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       {/* Segmented filter control */}
       <div className="px-4 py-3">
         <div className="mx-auto flex max-w-2xl">
@@ -297,7 +297,7 @@ export function DecisionReviewView({ onBack }: { onBack: () => void }) {
       </div>
 
       {/* Decision list */}
-      <div className="flex-1 overflow-y-auto px-4 pb-4">
+      <div className="flex-1 overflow-y-auto px-4 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className="mx-auto flex max-w-2xl flex-col gap-3">
           {isLoading && (
             <div className="flex justify-center py-8">
