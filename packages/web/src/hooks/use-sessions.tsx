@@ -1,10 +1,3 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  type ReactNode,
-} from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ChatSession } from "@backup-brain/shared";
 import { supabase } from "@/lib/supabase";
@@ -48,38 +41,4 @@ export function useCreateSession() {
       );
     },
   });
-}
-
-// Context for tracking the currently selected session
-interface SessionContextValue {
-  currentSession: ChatSession | null;
-  setCurrentSession: (session: ChatSession | null) => void;
-}
-
-const SessionContext = createContext<SessionContextValue | null>(null);
-
-export function SessionProvider({ children }: { children: ReactNode }) {
-  const [currentSession, setCurrentSession] = useState<ChatSession | null>(
-    null
-  );
-
-  const handleSetSession = useCallback((session: ChatSession | null) => {
-    setCurrentSession(session);
-  }, []);
-
-  return (
-    <SessionContext.Provider
-      value={{ currentSession, setCurrentSession: handleSetSession }}
-    >
-      {children}
-    </SessionContext.Provider>
-  );
-}
-
-export function useCurrentSession() {
-  const context = useContext(SessionContext);
-  if (!context) {
-    throw new Error("useCurrentSession must be used within a SessionProvider");
-  }
-  return context;
 }

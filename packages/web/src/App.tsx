@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/hooks/use-auth";
-import { SessionProvider } from "@/hooks/use-sessions";
 import { ProtectedRoute } from "@/components/protected-route";
 import { AppLayout } from "@/app/layouts/app-layout";
 import { AuthLayout } from "@/app/layouts/auth-layout";
@@ -44,9 +43,7 @@ export function AppRoutes() {
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <SessionProvider>{children}</SessionProvider>
-      </AuthProvider>
+      <AuthProvider>{children}</AuthProvider>
     </QueryClientProvider>
   );
 }
