@@ -257,7 +257,7 @@ function DecisionCard({
   );
 }
 
-export function DecisionReviewView({ onBack }: { onBack: () => void }) {
+export function DecisionReviewView() {
   const { user } = useAuth();
   const [filter, setFilter] = useState<DecisionFilter>("needs_review");
   const { data: decisions, isLoading } = useDecisions(filter);

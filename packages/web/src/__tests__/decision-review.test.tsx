@@ -1,6 +1,7 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router-dom";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock supabase before importing components
@@ -92,18 +93,20 @@ function setupSupabaseMock(decisions = MOCK_DECISIONS) {
   });
 }
 
-async function renderReview(onBack = vi.fn()) {
+async function renderReview() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   let result: ReturnType<typeof render>;
   await act(async () => {
     result = render(
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <DecisionReviewView onBack={onBack} />
-        </AuthProvider>
-      </QueryClientProvider>
+      <MemoryRouter initialEntries={["/review"]}>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <DecisionReviewView />
+          </AuthProvider>
+        </QueryClientProvider>
+      </MemoryRouter>
     );
   });
   return result!;
