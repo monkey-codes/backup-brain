@@ -61,8 +61,8 @@ function rewriteToolsForLLM(tools: ToolDefinition[]): ToolDefinition[] {
                     description:
                       'Decision payload. For classification: {"category": "..."}, ' +
                       'for entity: {"name": "...", "type": "..."}, ' +
-                      'for reminder: {"due_at": "ISO date", "message": "..."}, ' +
-                      'for tag: {"tag": "..."}',
+                      'for reminder: {"due_at": "ISO date", "description": "..."}, ' +
+                      'for tag: {"label": "..."}',
                   },
                   confidence: { type: "number", description: "0-1" },
                   reasoning: { type: "string" },

@@ -21,7 +21,7 @@ Every decision you make (classification, entity, reminder, tag) must include:
   - classification: `{ "category": "<category name>" }`
   - entity: `{ "name": "<entity name>", "type": "<person|place|thing|organization>" }`
   - reminder: `{ "due_at": "<ISO 8601 datetime>", "description": "<what to remind>" }`
-  - tag: `{ "tag": "<tag name>" }`
+  - tag: `{ "label": "<tag name>" }`
 - A **confidence** score between 0 and 1
 - A **reasoning** string explaining why you made that choice
 

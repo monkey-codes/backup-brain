@@ -698,6 +698,107 @@ Deno.test({
         }
       );
 
+      // ---- Decision value schema validation ----
+
+      await t.step(
+        "capture_thought rejects invalid tag value shape",
+        async () => {
+          const { parsed, isError } = await callTool("capture_thought", {
+            content: "Testing tag validation",
+            session_id: testSessionId,
+            created_by: testUserId,
+            embedding: dummyEmbedding(),
+            decisions: [
+              {
+                decision_type: "tag",
+                value: { tag: "urgent" }, // wrong key — should be { label: "..." }
+                confidence: 0.9,
+                reasoning: "test",
+              },
+            ],
+          });
+
+          assertEquals(isError, true);
+          assertExists(parsed.error);
+          const errorStr = JSON.stringify(parsed.error);
+          assertEquals(
+            errorStr.includes("label"),
+            true,
+            "Error should mention expected 'label' field"
+          );
+        }
+      );
+
+      await t.step(
+        "update_decision rejects invalid corrected_value for tag",
+        async () => {
+          const tagDecisionId = decisionIds[2]; // tag decision
+          const { parsed, isError } = await callTool("update_decision", {
+            decision_id: tagDecisionId,
+            review_status: "corrected",
+            corrected_value: { tag: "wrong-key" }, // wrong — should be { label: "..." }
+            corrected_by: testUserId,
+          });
+
+          assertEquals(isError, true);
+          assertExists(parsed.error);
+          const errorStr =
+            typeof parsed.error === "string"
+              ? parsed.error
+              : JSON.stringify(parsed.error);
+          assertEquals(
+            errorStr.includes("label"),
+            true,
+            "Error should mention expected 'label' field"
+          );
+        }
+      );
+
+      await t.step(
+        "update_decision rejects invalid value patch keys for reminder",
+        async () => {
+          const reminderId = decisionIds[3]; // reminder decision
+          const { parsed, isError } = await callTool("update_decision", {
+            decision_id: reminderId,
+            value: { due_att: "2026-05-01T10:00:00Z" }, // typo'd key
+          });
+
+          assertEquals(isError, true);
+          assertExists(parsed.error);
+          const errorStr =
+            typeof parsed.error === "string"
+              ? parsed.error
+              : JSON.stringify(parsed.error);
+          assertEquals(
+            errorStr.includes("due_at") || errorStr.includes("description"),
+            true,
+            "Error should mention valid fields for reminder"
+          );
+        }
+      );
+
+      await t.step(
+        "create_decision rejects invalid reminder value shape",
+        async () => {
+          const { parsed, isError } = await callTool("create_decision", {
+            thought_id: thoughtId,
+            decision_type: "reminder",
+            value: { when: "2026-05-01" }, // wrong — should be { due_at, description }
+            confidence: 0.8,
+            reasoning: "test",
+          });
+
+          assertEquals(isError, true);
+          assertExists(parsed.error);
+          const errorStr = JSON.stringify(parsed.error);
+          assertEquals(
+            errorStr.includes("due_at"),
+            true,
+            "Error should mention expected 'due_at' field"
+          );
+        }
+      );
+
       // ---- Unknown tool ----
 
       await t.step("tools/call returns error for unknown tool", async () => {

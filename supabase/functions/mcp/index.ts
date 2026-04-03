@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import { z, ZodObject, ZodRawShape } from "zod";
+import { z, ZodObject, ZodRawShape, ZodType } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 // ---------------------------------------------------------------------------
@@ -16,11 +16,11 @@ const supabase: SupabaseClient = createClient(
 // Tool registry
 // ---------------------------------------------------------------------------
 
-interface McpTool<S extends ZodRawShape = ZodRawShape> {
+interface McpTool<T extends ZodType = ZodType> {
   name: string;
   description: string;
-  schema: ZodObject<S>;
-  handler: (args: z.infer<ZodObject<S>>) => Promise<{
+  schema: T;
+  handler: (args: z.infer<T>) => Promise<{
     content: { type: "text"; text: string }[];
     isError?: boolean;
   }>;
@@ -29,11 +29,14 @@ interface McpTool<S extends ZodRawShape = ZodRawShape> {
 // deno-lint-ignore no-explicit-any
 const tools: McpTool<any>[] = [];
 
-function tool<S extends ZodRawShape>(
+function tool<T extends ZodType>(
   name: string,
   description: string,
-  schema: ZodObject<S>,
-  handler: McpTool<S>["handler"]
+  schema: T,
+  handler: (args: z.infer<T>) => Promise<{
+    content: { type: "text"; text: string }[];
+    isError?: boolean;
+  }>
 ) {
   tools.push({ name, description, schema, handler });
 }
@@ -50,6 +53,62 @@ function err(message: string) {
     isError: true as const,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Decision value schemas — discriminated by decision_type
+// ---------------------------------------------------------------------------
+
+const decisionValueSchemas = {
+  classification: z.object({ category: z.string() }),
+  entity: z.object({ name: z.string(), type: z.string() }),
+  reminder: z.object({ due_at: z.string(), description: z.string() }),
+  tag: z.object({ label: z.string() }),
+} as const;
+
+type DecisionType = keyof typeof decisionValueSchemas;
+
+function formatShape(type: DecisionType): string {
+  const shapes: Record<DecisionType, string> = {
+    classification: "{ category: string }",
+    entity: "{ name: string, type: string }",
+    reminder: "{ due_at: string, description: string }",
+    tag: "{ label: string }",
+  };
+  return shapes[type];
+}
+
+function refineDecisionValue(
+  entry: { decision_type: DecisionType; value: Record<string, unknown> },
+  ctx: z.RefinementCtx
+) {
+  const schema = decisionValueSchemas[entry.decision_type];
+  const result = schema.safeParse(entry.value);
+  if (!result.success) {
+    for (const issue of result.error.issues) {
+      ctx.addIssue({
+        ...issue,
+        path: ["value", ...issue.path],
+        message: `Invalid value for ${entry.decision_type}: ${issue.message}. Expected shape: ${formatShape(entry.decision_type)}`,
+      });
+    }
+  }
+}
+
+const decisionEntrySchema = z
+  .object({
+    decision_type: z.enum(["classification", "entity", "reminder", "tag"]),
+    value: z
+      .record(z.unknown())
+      .describe("Decision value (shape depends on decision_type)"),
+    confidence: z.number().min(0).max(1),
+    reasoning: z.string(),
+  })
+  .superRefine((entry, ctx) =>
+    refineDecisionValue(
+      entry as { decision_type: DecisionType; value: Record<string, unknown> },
+      ctx
+    )
+  );
 
 // ---------------------------------------------------------------------------
 // Tools
@@ -71,21 +130,7 @@ tool(
       .length(1536)
       .describe("Pre-computed embedding vector (1536 dimensions)"),
     decisions: z
-      .array(
-        z.object({
-          decision_type: z.enum([
-            "classification",
-            "entity",
-            "reminder",
-            "tag",
-          ]),
-          value: z
-            .record(z.unknown())
-            .describe("Decision value (shape depends on decision_type)"),
-          confidence: z.number().min(0).max(1),
-          reasoning: z.string(),
-        })
-      )
+      .array(decisionEntrySchema)
       .describe("Decisions to attach to the thought"),
   }),
   async ({ content, session_id, created_by, embedding, decisions }) => {
@@ -247,15 +292,25 @@ tool(
 tool(
   "create_decision",
   "Add a decision to an existing thought.",
-  z.object({
-    thought_id: z.string().uuid(),
-    decision_type: z.enum(["classification", "entity", "reminder", "tag"]),
-    value: z
-      .record(z.unknown())
-      .describe("Decision value (shape depends on decision_type)"),
-    confidence: z.number().min(0).max(1),
-    reasoning: z.string(),
-  }),
+  z
+    .object({
+      thought_id: z.string().uuid(),
+      decision_type: z.enum(["classification", "entity", "reminder", "tag"]),
+      value: z
+        .record(z.unknown())
+        .describe("Decision value (shape depends on decision_type)"),
+      confidence: z.number().min(0).max(1),
+      reasoning: z.string(),
+    })
+    .superRefine((entry, ctx) =>
+      refineDecisionValue(
+        entry as {
+          decision_type: DecisionType;
+          value: Record<string, unknown>;
+        },
+        ctx
+      )
+    ),
   async (args) => {
     const { data, error } = await supabase
       .from("thought_decisions")
@@ -302,24 +357,53 @@ tool(
   }) => {
     const update: Record<string, unknown> = {};
     if (review_status !== undefined) update.review_status = review_status;
-    if (corrected_value !== undefined) update.corrected_value = corrected_value;
     if (corrected_by !== undefined) {
       update.corrected_by = corrected_by;
       update.corrected_at = new Date().toISOString();
     }
 
-    // Shallow-merge value patch: read current value, spread patch on top
-    if (value !== undefined) {
+    // Fetch current decision when we need decision_type (for validation) or value (for merge)
+    if (corrected_value !== undefined || value !== undefined) {
       const { data: current, error: fetchErr } = await supabase
         .from("thought_decisions")
-        .select("value")
+        .select("decision_type, value")
         .eq("id", decision_id)
         .single();
       if (fetchErr) return err(fetchErr.message);
-      update.value = {
-        ...(current.value as Record<string, unknown>),
-        ...value,
-      };
+
+      const dt = current.decision_type as DecisionType;
+      const schema = decisionValueSchemas[dt];
+
+      // Validate corrected_value against full schema
+      if (corrected_value !== undefined) {
+        const result = schema.safeParse(corrected_value);
+        if (!result.success) {
+          const issues = result.error.issues
+            .map((i) => `${i.message} at "${i.path.join(".")}"`)
+            .join("; ");
+          return err(
+            `Invalid corrected_value for ${dt}: ${issues}. Expected shape: ${formatShape(dt)}`
+          );
+        }
+        update.corrected_value = corrected_value;
+      }
+
+      // Validate value patch against partial schema (valid keys, correct types)
+      if (value !== undefined) {
+        const partialResult = schema.partial().strict().safeParse(value);
+        if (!partialResult.success) {
+          const issues = partialResult.error.issues
+            .map((i) => `${i.message} at "${i.path.join(".")}"`)
+            .join("; ");
+          return err(
+            `Invalid value patch for ${dt}: ${issues}. Expected shape: ${formatShape(dt)}`
+          );
+        }
+        update.value = {
+          ...(current.value as Record<string, unknown>),
+          ...value,
+        };
+      }
     }
 
     const { data, error } = await supabase
