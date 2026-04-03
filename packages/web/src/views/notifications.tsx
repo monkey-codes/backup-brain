@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Bell, X, Loader2 } from "lucide-react";
 import type { Notification, NotificationType } from "@backup-brain/shared";
 import { Button } from "@/components/ui/button";
@@ -125,7 +126,8 @@ function NotificationCard({
   );
 }
 
-export function NotificationsView({ onBack }: { onBack: () => void }) {
+export function NotificationsView() {
+  const navigate = useNavigate();
   const { data: notifications, isLoading } = useNotifications();
   const unreadCount = useUnreadCount(notifications);
   const dismissMutation = useDismissNotification();
@@ -139,7 +141,7 @@ export function NotificationsView({ onBack }: { onBack: () => void }) {
           <Button
             variant="ghost"
             size="icon"
-            onClick={onBack}
+            onClick={() => navigate("/chat")}
             aria-label="Back to chat"
             data-testid="back-button"
           >
