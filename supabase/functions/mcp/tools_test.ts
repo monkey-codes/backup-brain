@@ -799,6 +799,134 @@ Deno.test({
         }
       );
 
+      // ---- Todo decision value schema validation ----
+
+      await t.step(
+        "capture_thought accepts valid todo value shape",
+        async () => {
+          const { parsed, isError } = await callTool("capture_thought", {
+            content: "I need to paint the fence this weekend",
+            session_id: testSessionId,
+            created_by: testUserId,
+            embedding: dummyEmbedding(),
+            decisions: [
+              {
+                decision_type: "todo",
+                value: { description: "Paint the fence", completed_at: null },
+                confidence: 0.95,
+                reasoning: "Explicit todo request",
+              },
+            ],
+          });
+
+          assertEquals(isError, undefined);
+          assertExists(parsed.thought_id);
+          assertEquals(parsed.decisions.length, 1);
+          assertEquals(parsed.decisions[0].decision_type, "todo");
+          assertEquals(
+            parsed.decisions[0].value.description,
+            "Paint the fence"
+          );
+          assertEquals(parsed.decisions[0].value.completed_at, null);
+          createdIds.thoughts.push(parsed.thought_id);
+        }
+      );
+
+      await t.step(
+        "capture_thought rejects invalid todo value shape (missing description)",
+        async () => {
+          const { parsed, isError } = await callTool("capture_thought", {
+            content: "Testing todo validation",
+            session_id: testSessionId,
+            created_by: testUserId,
+            embedding: dummyEmbedding(),
+            decisions: [
+              {
+                decision_type: "todo",
+                value: { task: "Paint the fence" }, // wrong key — should be { description, completed_at }
+                confidence: 0.9,
+                reasoning: "test",
+              },
+            ],
+          });
+
+          assertEquals(isError, true);
+          assertExists(parsed.error);
+          const errorStr = JSON.stringify(parsed.error);
+          assertEquals(
+            errorStr.includes("description"),
+            true,
+            "Error should mention expected 'description' field"
+          );
+        }
+      );
+
+      await t.step(
+        "create_decision accepts valid todo value shape",
+        async () => {
+          const { parsed, isError } = await callTool("create_decision", {
+            thought_id: thoughtId,
+            decision_type: "todo",
+            value: { description: "Call the dentist", completed_at: null },
+            confidence: 0.92,
+            reasoning: "Explicit todo request",
+          });
+
+          assertEquals(isError, undefined);
+          assertExists(parsed.id);
+          assertEquals(parsed.decision_type, "todo");
+          assertEquals(parsed.value.description, "Call the dentist");
+          assertEquals(parsed.value.completed_at, null);
+          decisionIds.push(parsed.id);
+        }
+      );
+
+      await t.step(
+        "update_decision validates partial todo value patch (completed_at only)",
+        async () => {
+          // Find the todo decision we just created (last in decisionIds)
+          const todoDecisionId = decisionIds[decisionIds.length - 1];
+          const completedAt = "2026-04-03T12:00:00Z";
+
+          const { parsed, isError } = await callTool("update_decision", {
+            decision_id: todoDecisionId,
+            value: { completed_at: completedAt },
+          });
+
+          assertEquals(isError, undefined);
+          // completed_at should be updated
+          assertEquals(parsed.value.completed_at, completedAt);
+          // description should be preserved (shallow merge)
+          assertEquals(parsed.value.description, "Call the dentist");
+          // review_status should remain unchanged
+          assertEquals(parsed.review_status, "pending");
+        }
+      );
+
+      await t.step(
+        "update_decision rejects invalid todo value patch keys",
+        async () => {
+          const todoDecisionId = decisionIds[decisionIds.length - 1];
+          const { parsed, isError } = await callTool("update_decision", {
+            decision_id: todoDecisionId,
+            value: { done: true }, // wrong key — should be description or completed_at
+          });
+
+          assertEquals(isError, true);
+          assertExists(parsed.error);
+          const errorStr =
+            typeof parsed.error === "string"
+              ? parsed.error
+              : JSON.stringify(parsed.error);
+          assertEquals(
+            errorStr.includes("description") ||
+              errorStr.includes("completed_at"),
+            true,
+            "Error should mention valid fields for todo"
+          );
+        }
+      );
+
       // ---- Unknown tool ----
 
       await t.step("tools/call returns error for unknown tool", async () => {
