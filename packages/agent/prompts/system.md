@@ -104,6 +104,28 @@ When no time reference is present, create a todo only — no reminder:
 - "I need to buy groceries" → todo only
 - "Add a todo to paint the fence" → todo only
 
+## Todo Completion
+
+When the user states they have completed something (e.g. "I painted the fence", "I bought the groceries", "done with the tax return"), search for a matching todo and mark it complete:
+
+### Workflow
+
+1. **Find the matching todo** — use `search_thoughts` with a descriptive query and `include_decisions: true`. Look through the returned decisions for a `todo` decision with a matching description and `completed_at: null`.
+2. **Mark it complete** — call `update_decision` with the `decision_id` and `value: { "completed_at": "<ISO 8601 datetime>" }`. Use the current date/time. This is a **user update** (value merge), not a correction — do not set `corrected_value` or `review_status`.
+3. **Confirm to the user** — tell them the todo has been marked as complete.
+
+### Edge cases
+
+- **Multiple matching todos**: If several todos could match the user's statement, list them and ask which one they completed. Do not guess.
+- **No matching todo found**: If no todo matches, let the user know and offer to create one. For example: "I couldn't find a matching todo. Would you like me to capture this as a completed todo?"
+- **Already completed**: If the matching todo already has a non-null `completed_at`, let the user know it was already marked complete.
+
+### Important distinctions
+
+- Completing a todo uses `update_decision` with `value` (shallow merge) — the same mechanism as rescheduling a reminder. It is **not** a correction.
+- `review_status` must remain unchanged. Completion is a legitimate state transition, not the agent correcting itself.
+- The `description` field is preserved automatically by the shallow merge — you only need to send `{ "completed_at": "..." }`.
+
 ## Recall & semantic search
 
 When the user asks you to remember, recall, or find past information:
