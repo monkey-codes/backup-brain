@@ -24,7 +24,12 @@ export interface Thought {
   updated_at: string;
 }
 
-export type DecisionType = "classification" | "entity" | "reminder" | "tag";
+export type DecisionType =
+  | "classification"
+  | "entity"
+  | "reminder"
+  | "tag"
+  | "todo";
 
 export type ReviewStatus = "pending" | "accepted" | "corrected";
 
@@ -46,11 +51,17 @@ export interface TagValue {
   label: string;
 }
 
+export interface TodoValue {
+  description: string;
+  completed_at: string | null;
+}
+
 export type DecisionValue =
   | ClassificationValue
   | EntityValue
   | ReminderValue
-  | TagValue;
+  | TagValue
+  | TodoValue;
 
 export interface ThoughtDecision {
   id: string;

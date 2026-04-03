@@ -63,6 +63,10 @@ const decisionValueSchemas = {
   entity: z.object({ name: z.string(), type: z.string() }),
   reminder: z.object({ due_at: z.string(), description: z.string() }),
   tag: z.object({ label: z.string() }),
+  todo: z.object({
+    description: z.string(),
+    completed_at: z.string().nullable(),
+  }),
 } as const;
 
 type DecisionType = keyof typeof decisionValueSchemas;
@@ -73,6 +77,7 @@ function formatShape(type: DecisionType): string {
     entity: "{ name: string, type: string }",
     reminder: "{ due_at: string, description: string }",
     tag: "{ label: string }",
+    todo: "{ description: string, completed_at: string | null }",
   };
   return shapes[type];
 }
@@ -96,7 +101,13 @@ function refineDecisionValue(
 
 const decisionEntrySchema = z
   .object({
-    decision_type: z.enum(["classification", "entity", "reminder", "tag"]),
+    decision_type: z.enum([
+      "classification",
+      "entity",
+      "reminder",
+      "tag",
+      "todo",
+    ]),
     value: z
       .record(z.unknown())
       .describe("Decision value (shape depends on decision_type)"),
@@ -295,7 +306,13 @@ tool(
   z
     .object({
       thought_id: z.string().uuid(),
-      decision_type: z.enum(["classification", "entity", "reminder", "tag"]),
+      decision_type: z.enum([
+        "classification",
+        "entity",
+        "reminder",
+        "tag",
+        "todo",
+      ]),
       value: z
         .record(z.unknown())
         .describe("Decision value (shape depends on decision_type)"),
