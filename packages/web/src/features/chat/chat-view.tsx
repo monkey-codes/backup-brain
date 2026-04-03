@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect, useMemo, type FormEvent } from "react";
 import { Send } from "lucide-react";
 import type { ChatMessage } from "@backup-brain/shared";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import {
   useMessages,
   useSendMessage,
   useIsThinking,
-} from "@/hooks/use-messages";
+} from "@/features/chat/use-messages";
 
 function formatMessageTime(dateStr: string): string {
   const date = new Date(dateStr);

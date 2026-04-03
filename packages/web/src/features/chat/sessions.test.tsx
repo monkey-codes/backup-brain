@@ -17,7 +17,7 @@ const mockChannelObj = {
   unsubscribe: vi.fn(),
 };
 
-vi.mock("@/lib/supabase", () => ({
+vi.mock("@/shared/lib/supabase", () => ({
   supabase: {
     auth: {
       getSession: () =>
@@ -40,9 +40,9 @@ vi.mock("@/lib/supabase", () => ({
   },
 }));
 
-import { AuthProvider } from "../hooks/use-auth";
+import { AuthProvider } from "../auth/use-auth";
 
-import { AppRoutes } from "../App";
+import { AppRoutes } from "../../App";
 
 const MOCK_SESSIONS = [
   {

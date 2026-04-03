@@ -1,15 +1,15 @@
 import { useState } from "react";
 import { Check, Pencil, Loader2, Trash2 } from "lucide-react";
 import type { DecisionType, DecisionValue } from "@backup-brain/shared";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/use-auth";
+import { Button } from "@/shared/ui/button";
+import { useAuth } from "@/features/auth/use-auth";
 import {
   useDecisions,
   useAcceptDecision,
   useCorrectDecision,
   type DecisionFilter,
   type DecisionWithThought,
-} from "@/hooks/use-decisions";
+} from "@/features/decisions/use-decisions";
 
 function formatValue(type: DecisionType, value: DecisionValue): string {
   switch (type) {

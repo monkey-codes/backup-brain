@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from "react";
 import { Navigate } from "react-router-dom";
 import { Brain } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useAuth } from "@/features/auth/use-auth";
+import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
+import { Label } from "@/shared/ui/label";
 
 export function LoginView() {
   const { signIn, session, loading } = useAuth();

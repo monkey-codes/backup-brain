@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Notification } from "@backup-brain/shared";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/shared/lib/supabase";
 
 const NOTIFICATIONS_KEY = "notifications";
 

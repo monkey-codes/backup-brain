@@ -14,7 +14,7 @@ const mockEq = vi.fn();
 const mockSingle = vi.fn();
 const mockChannel = vi.fn();
 
-vi.mock("@/lib/supabase", () => ({
+vi.mock("@/shared/lib/supabase", () => ({
   supabase: {
     from: (...args: unknown[]) => mockFrom(...args),
     channel: (...args: unknown[]) => mockChannel(...args),
@@ -36,8 +36,8 @@ vi.mock("@/lib/supabase", () => ({
   },
 }));
 
-import { NotificationsView } from "../views/notifications";
-import { AuthProvider } from "../hooks/use-auth";
+import { NotificationsView } from "./notifications";
+import { AuthProvider } from "../auth/use-auth";
 
 const MOCK_NOTIFICATIONS = [
   {

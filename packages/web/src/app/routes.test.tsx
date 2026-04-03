@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const mockGetSession = vi.fn();
 const mockOnAuthStateChange = vi.fn();
 
-vi.mock("@/lib/supabase", () => ({
+vi.mock("@/shared/lib/supabase", () => ({
   supabase: {
     auth: {
       getSession: () => mockGetSession(),
@@ -39,7 +39,7 @@ vi.mock("@/lib/supabase", () => ({
   },
 }));
 
-import { AuthProvider } from "../hooks/use-auth";
+import { AuthProvider } from "../features/auth/use-auth";
 
 import { AppRoutes } from "../App";
 

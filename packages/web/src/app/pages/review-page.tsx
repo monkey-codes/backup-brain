@@ -1,4 +1,4 @@
-import { DecisionReviewView } from "@/views/decision-review";
+import { DecisionReviewView } from "@/features/decisions/decision-review";
 
 export function ReviewPage() {
   return <DecisionReviewView />;

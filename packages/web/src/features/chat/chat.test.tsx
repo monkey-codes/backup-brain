@@ -15,7 +15,7 @@ const mockOn = vi.fn();
 const mockSubscribe = vi.fn();
 const mockRemoveChannel = vi.fn();
 
-vi.mock("@/lib/supabase", () => ({
+vi.mock("@/shared/lib/supabase", () => ({
   supabase: {
     from: (...args: unknown[]) => mockFrom(...args),
     channel: (...args: unknown[]) => mockChannel(...args),
@@ -23,7 +23,7 @@ vi.mock("@/lib/supabase", () => ({
   },
 }));
 
-import { ChatView } from "../components/chat-view";
+import { ChatView } from "./chat-view";
 
 const MOCK_MESSAGES = [
   {
