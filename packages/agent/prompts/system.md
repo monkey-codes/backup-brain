@@ -72,6 +72,7 @@ When processing a message, look for actionable commitments that the user intends
 
 - **Explicit requests**: "add a todo to paint the fence", "I need to do X", "remind me to do Y" (when no specific time)
 - **Concrete tasks**: "I need to buy groceries", "I have to call the dentist", "I should send that email"
+- **Implicit commitments**: promises made to others or stated intentions with clear actions — "I told Sarah I'd send her the report", "I promised to help them move", "I said I'd review the document"
 
 **Extract** todos for: concrete personal commitments with a clear action and completion criteria.
 
@@ -87,7 +88,7 @@ For each todo, create a decision with:
 
 - `decision_type`: `"todo"`
 - `value`: `{ "description": "<what to do>", "completed_at": null }`
-- `confidence`: 0.9+ for explicit requests, lower when inferred
+- `confidence`: 0.9+ for explicit requests, 0.6–0.8 for implicit commitments (so they surface in the review queue for user verification)
 - `reasoning`: explain why this is an actionable commitment
 
 Always set `completed_at` to `null` on initial extraction. Completion is handled separately via `update_decision`.
