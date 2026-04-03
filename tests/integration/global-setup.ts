@@ -52,8 +52,8 @@ export default async function globalSetup(config: FullConfig) {
   await page.locator("#password").fill(TEST_PASSWORD);
   await page.locator('button[type="submit"]').click();
 
-  // Wait for redirect to the authenticated app
-  await page.waitForURL("/", { timeout: 15_000 });
+  // Wait for redirect to the authenticated app (/ redirects to /chat)
+  await page.waitForURL("**/chat", { timeout: 15_000 });
 
   // Save authenticated browser state (localStorage session)
   await context.storageState({ path: STORAGE_STATE_PATH });
