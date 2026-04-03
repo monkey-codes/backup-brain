@@ -3,24 +3,40 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/hooks/use-auth";
 import { SessionProvider } from "@/hooks/use-sessions";
 import { ProtectedRoute } from "@/components/protected-route";
+import { AppLayout } from "@/app/layouts/app-layout";
+import { AuthLayout } from "@/app/layouts/auth-layout";
 import { LoginView } from "@/views/login";
-import { ChatShell } from "@/views/chat-shell";
+import { ChatPage } from "@/app/pages/chat-page";
+import { ReviewPage } from "@/app/pages/review-page";
+import { NotificationsPage } from "@/app/pages/notifications-page";
 
 const queryClient = new QueryClient();
 
 export function AppRoutes() {
   return (
     <Routes>
-      <Route path="/login" element={<LoginView />} />
+      {/* Auth layout — minimal, no shell */}
+      <Route element={<AuthLayout />}>
+        <Route path="/login" element={<LoginView />} />
+      </Route>
+
+      {/* App layout — full shell, protected */}
       <Route
-        path="/"
         element={
           <ProtectedRoute>
-            <ChatShell />
+            <AppLayout />
           </ProtectedRoute>
         }
-      />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      >
+        <Route path="/chat" element={<ChatPage />} />
+        <Route path="/chat/:sessionId" element={<ChatPage />} />
+        <Route path="/review" element={<ReviewPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
+      </Route>
+
+      {/* Redirects */}
+      <Route path="/" element={<Navigate to="/chat" replace />} />
+      <Route path="*" element={<Navigate to="/chat" replace />} />
     </Routes>
   );
 }

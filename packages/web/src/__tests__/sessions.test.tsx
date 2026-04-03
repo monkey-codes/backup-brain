@@ -40,9 +40,9 @@ vi.mock("@/lib/supabase", () => ({
   },
 }));
 
-import { ChatShell } from "../views/chat-shell";
 import { AuthProvider } from "../hooks/use-auth";
 import { SessionProvider } from "../hooks/use-sessions";
+import { AppRoutes } from "../App";
 
 const MOCK_SESSIONS = [
   {
@@ -107,8 +107,8 @@ async function renderChatShell() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <SessionProvider>
-            <MemoryRouter>
-              <ChatShell />
+            <MemoryRouter initialEntries={["/chat"]}>
+              <AppRoutes />
             </MemoryRouter>
           </SessionProvider>
         </AuthProvider>
@@ -329,7 +329,9 @@ describe("Bell icon + notifications", () => {
 
     await user.click(screen.getByTestId("bell-button"));
     // Should no longer show notifications header
-    expect(screen.queryByText("Notifications")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText("Notifications")).not.toBeInTheDocument();
+    });
   });
 
   it("hides unread badge when count is zero", async () => {
@@ -365,6 +367,40 @@ describe("Bottom nav bar", () => {
 
   it("tapping Review tab shows decision review view", async () => {
     setupSupabaseMock();
+
+    // Add decisions mock for the review page
+    const mockDecisionOrder = vi
+      .fn()
+      .mockResolvedValue({ data: [], error: null });
+    const mockDecisionOr = vi
+      .fn()
+      .mockReturnValue({ order: mockDecisionOrder });
+    const mockDecisionSelect = vi
+      .fn()
+      .mockReturnValue({ or: mockDecisionOr, order: mockDecisionOrder });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "chat_sessions") {
+        return { select: mockSelect, insert: mockInsert };
+      }
+      if (table === "thought_decisions") {
+        return { select: mockDecisionSelect, update: vi.fn() };
+      }
+      if (table === "notifications") {
+        const mockNotifOrder = vi
+          .fn()
+          .mockResolvedValue({ data: [], error: null });
+        const mockNotifIs = vi.fn().mockReturnValue({ order: mockNotifOrder });
+        return {
+          select: vi
+            .fn()
+            .mockReturnValue({ is: mockNotifIs, order: mockNotifOrder }),
+          update: vi.fn(),
+        };
+      }
+      return { select: vi.fn(), insert: vi.fn() };
+    });
+
     const user = userEvent.setup();
     await renderChatShell();
 
@@ -381,6 +417,40 @@ describe("Bottom nav bar", () => {
 
   it("tapping Chat tab returns to chat view", async () => {
     setupSupabaseMock();
+
+    // Add decisions mock for the review page
+    const mockDecisionOrder = vi
+      .fn()
+      .mockResolvedValue({ data: [], error: null });
+    const mockDecisionOr = vi
+      .fn()
+      .mockReturnValue({ order: mockDecisionOrder });
+    const mockDecisionSelect = vi
+      .fn()
+      .mockReturnValue({ or: mockDecisionOr, order: mockDecisionOrder });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "chat_sessions") {
+        return { select: mockSelect, insert: mockInsert };
+      }
+      if (table === "thought_decisions") {
+        return { select: mockDecisionSelect, update: vi.fn() };
+      }
+      if (table === "notifications") {
+        const mockNotifOrder = vi
+          .fn()
+          .mockResolvedValue({ data: [], error: null });
+        const mockNotifIs = vi.fn().mockReturnValue({ order: mockNotifOrder });
+        return {
+          select: vi
+            .fn()
+            .mockReturnValue({ is: mockNotifIs, order: mockNotifOrder }),
+          update: vi.fn(),
+        };
+      }
+      return { select: vi.fn(), insert: vi.fn() };
+    });
+
     const user = userEvent.setup();
     await renderChatShell();
 
@@ -394,8 +464,10 @@ describe("Bottom nav bar", () => {
     await user.click(screen.getByTestId("nav-chat"));
 
     // Chat tab should be active again
-    const chatTab = screen.getByTestId("nav-chat");
-    expect(chatTab.className).toContain("text-primary");
+    await waitFor(() => {
+      const chatTab = screen.getByTestId("nav-chat");
+      expect(chatTab.className).toContain("text-primary");
+    });
   });
 });
 
@@ -406,6 +478,40 @@ describe("Nav integration", () => {
 
   it("tapping bell while on review switches to notifications", async () => {
     setupSupabaseMock();
+
+    // Add decisions mock
+    const mockDecisionOrder = vi
+      .fn()
+      .mockResolvedValue({ data: [], error: null });
+    const mockDecisionOr = vi
+      .fn()
+      .mockReturnValue({ order: mockDecisionOrder });
+    const mockDecisionSelect = vi
+      .fn()
+      .mockReturnValue({ or: mockDecisionOr, order: mockDecisionOrder });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "chat_sessions") {
+        return { select: mockSelect, insert: mockInsert };
+      }
+      if (table === "thought_decisions") {
+        return { select: mockDecisionSelect, update: vi.fn() };
+      }
+      if (table === "notifications") {
+        const mockNotifOrder = vi
+          .fn()
+          .mockResolvedValue({ data: [], error: null });
+        const mockNotifIs = vi.fn().mockReturnValue({ order: mockNotifOrder });
+        return {
+          select: vi
+            .fn()
+            .mockReturnValue({ is: mockNotifIs, order: mockNotifOrder }),
+          update: vi.fn(),
+        };
+      }
+      return { select: vi.fn(), insert: vi.fn() };
+    });
+
     const user = userEvent.setup();
     await renderChatShell();
 
@@ -437,7 +543,9 @@ describe("Nav integration", () => {
     await user.click(screen.getByTestId("nav-chat"));
 
     // Notifications view should be gone
-    expect(screen.queryByText("Notifications")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText("Notifications")).not.toBeInTheDocument();
+    });
   });
 
   it("main content area is a flex column container for proper scroll layout", async () => {
