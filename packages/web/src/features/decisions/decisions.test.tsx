@@ -13,7 +13,7 @@ const mockUpdate = vi.fn();
 const mockEq = vi.fn();
 const mockSingle = vi.fn();
 
-vi.mock("@/lib/supabase", () => ({
+vi.mock("@/shared/lib/supabase", () => ({
   supabase: {
     from: (...args: unknown[]) => mockFrom(...args),
     auth: {
@@ -33,8 +33,8 @@ vi.mock("@/lib/supabase", () => ({
   },
 }));
 
-import { DecisionReviewView } from "../views/decision-review";
-import { AuthProvider } from "../hooks/use-auth";
+import { DecisionReviewView } from "./decision-review";
+import { AuthProvider } from "../auth/use-auth";
 
 const MOCK_DECISIONS = [
   {

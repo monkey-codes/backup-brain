@@ -1,5 +1,5 @@
 import { useParams } from "react-router-dom";
-import { ChatView } from "@/components/chat-view";
+import { ChatView } from "@/features/chat/chat-view";
 
 export function ChatPage() {
   const { sessionId } = useParams<{ sessionId: string }>();

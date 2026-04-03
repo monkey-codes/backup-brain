@@ -58,17 +58,21 @@ Hooks subscribe to Supabase Realtime channels for live updates:
 
 Fonts: Inter (body), Space Grotesk (headlines) — loaded from Google Fonts.
 
-Utility: `cn()` in `lib/utils.ts` (clsx + tailwind-merge) for conditional class merging.
+Utility: `cn()` in `shared/lib/utils.ts` (clsx + tailwind-merge) for conditional class merging.
 
 `DESIGN.md` contains the full visual design system ("Obsidian Intelligence Framework") with rules for surface layering, typography, elevation, and component styling. Consult it when building or modifying UI components.
 
-### Component Organization
+### Folder Structure (Feature-based)
 
-- **`components/ui/`** — Reusable primitives (Button, Input, Label) using CVA for variants
-- **`components/`** — Feature components (ChatView, ProtectedRoute)
-- **`views/`** — Page-level containers (ChatShell, LoginView, DecisionReviewView, NotificationsView)
-- **`hooks/`** — Data hooks wrapping TanStack Query + Supabase calls
-- **`lib/`** — Supabase client init, utilities
+- **`app/`** — App shell and wiring: route config (`App.tsx`), layout components (`layouts/`), thin page wrappers (`pages/`), route tests
+- **`features/auth/`** — Login page, auth hook/provider (`use-auth.tsx`), protected route, auth tests
+- **`features/chat/`** — ChatView component, message and session hooks, chat tests
+- **`features/decisions/`** — Decision review page, decision hooks, decision tests
+- **`features/notifications/`** — Notifications page, notification hooks, notification tests
+- **`shared/ui/`** — Reusable UI primitives (Button, Input, Label) using CVA for variants
+- **`shared/lib/`** — Supabase client init (`supabase.ts`), utilities (`utils.ts`)
+
+No barrel files — all imports are direct (e.g., `@/features/chat/use-messages`). Tests live alongside their feature code.
 
 ### Path Alias
 
@@ -78,7 +82,7 @@ Utility: `cn()` in `lib/utils.ts` (clsx + tailwind-merge) for conditional class 
 
 - Vitest with jsdom environment, `globals: true`
 - Setup file: `src/test-setup.ts` (registers jest-dom matchers, mocks `scrollIntoView`)
-- Supabase mocked with `vi.mock("@/lib/supabase")` — chainable query builders
+- Supabase mocked with `vi.mock("@/shared/lib/supabase")` — chainable query builders
 - Auth state initialized via `setupAuthMock()` helper in tests
 - Interactive elements have `data-testid` attributes
 - Uses `@testing-library/react` for rendering + queries, `@testing-library/user-event` for interactions, `waitFor()` for async assertions

@@ -1,13 +1,13 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Bell, X, Loader2 } from "lucide-react";
 import type { Notification, NotificationType } from "@backup-brain/shared";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import {
   useNotifications,
   useUnreadCount,
   useDismissNotification,
   useMarkNotificationRead,
-} from "@/hooks/use-notifications";
+} from "@/features/notifications/use-notifications";
 
 const TYPE_CONFIG: Record<
   NotificationType,

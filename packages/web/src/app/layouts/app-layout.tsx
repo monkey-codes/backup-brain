@@ -14,10 +14,13 @@ import {
   ClipboardCheck,
   LogOut,
 } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
-import { useSessions, useCreateSession } from "@/hooks/use-sessions";
-import { useNotifications, useUnreadCount } from "@/hooks/use-notifications";
-import { Button } from "@/components/ui/button";
+import { useAuth } from "@/features/auth/use-auth";
+import { useSessions, useCreateSession } from "@/features/chat/use-sessions";
+import {
+  useNotifications,
+  useUnreadCount,
+} from "@/features/notifications/use-notifications";
+import { Button } from "@/shared/ui/button";
 import type { ChatSession } from "@backup-brain/shared";
 
 export function AppLayout() {

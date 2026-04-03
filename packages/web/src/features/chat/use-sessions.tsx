@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ChatSession } from "@backup-brain/shared";
-import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/shared/lib/supabase";
+import { useAuth } from "@/features/auth/use-auth";
 
 const SESSIONS_KEY = ["chat_sessions"];
 

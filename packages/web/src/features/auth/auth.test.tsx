@@ -10,7 +10,7 @@ const mockSignOut = vi.fn();
 const mockGetSession = vi.fn();
 const mockOnAuthStateChange = vi.fn();
 
-vi.mock("@/lib/supabase", () => ({
+vi.mock("@/shared/lib/supabase", () => ({
   supabase: {
     auth: {
       getSession: () => mockGetSession(),
@@ -35,9 +35,9 @@ vi.mock("@/lib/supabase", () => ({
   },
 }));
 
-import { AuthProvider } from "../hooks/use-auth";
+import { AuthProvider } from "./use-auth";
 
-import { AppRoutes } from "../App";
+import { AppRoutes } from "../../App";
 
 function setupAuthMock(session: unknown = null) {
   mockGetSession.mockResolvedValue({ data: { session } });

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ThoughtDecision, ReviewStatus } from "@backup-brain/shared";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/shared/lib/supabase";
 
 export type DecisionFilter = "needs_review" | "all";
 

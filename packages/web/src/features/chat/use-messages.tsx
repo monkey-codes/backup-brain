@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ChatMessage } from "@backup-brain/shared";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/shared/lib/supabase";
 
 function messagesKey(sessionId: string) {
   return ["chat_messages", sessionId];

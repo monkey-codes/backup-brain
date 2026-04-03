@@ -1,10 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { AuthProvider } from "@/hooks/use-auth";
-import { ProtectedRoute } from "@/components/protected-route";
+import { AuthProvider } from "@/features/auth/use-auth";
+import { ProtectedRoute } from "@/features/auth/protected-route";
 import { AppLayout } from "@/app/layouts/app-layout";
 import { AuthLayout } from "@/app/layouts/auth-layout";
-import { LoginView } from "@/views/login";
+import { LoginView } from "@/features/auth/login";
 import { ChatPage } from "@/app/pages/chat-page";
 import { ReviewPage } from "@/app/pages/review-page";
 import { NotificationsPage } from "@/app/pages/notifications-page";
