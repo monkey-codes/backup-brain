@@ -18,30 +18,35 @@ From monorepo root: `task test:web`
 
 ### Routing (React Router 7)
 
-Three routes in `App.tsx`:
-- `/login` -> `LoginView` (public)
-- `/` -> `ChatShell` (wrapped in `ProtectedRoute`)
-- `*` -> redirects to `/`
+Layout routes in `App.tsx`:
+
+- **Auth layout** (minimal, no shell): `/login` -> `LoginView`
+- **App layout** (full shell, protected): `/chat`, `/chat/:sessionId`, `/review`, `/notifications`
+- `/` and `*` redirect to `/chat`
 
 `ProtectedRoute` checks `useAuth()` and redirects unauthenticated users to `/login`.
+
+Chat sessions are URL-driven: `/chat/:sessionId` loads a session from the URL param. `/chat` (no param) shows an empty state. Session identity comes from `useParams()`, not React context.
 
 ### State Management
 
 **TanStack Query** for all server state. Query keys:
+
 - `["chat_sessions"]` — session list
 - `["chat_messages", sessionId]` — messages for a session
 - `"thought_decisions"` — decision review data
 - `"notifications"` — notification list
 
 **React Context** for UI state:
+
 - `AuthProvider` (`use-auth.tsx`) — Supabase session, `signIn()`, `signOut()`
-- `SessionProvider` (`use-sessions.tsx`) — currently selected chat session
 
 **Mutations** use optimistic updates: create temporary entries (e.g., `"optimistic-${Date.now()}"`), rollback on error via `onError` with saved previous state.
 
 ### Realtime Subscriptions
 
 Hooks subscribe to Supabase Realtime channels for live updates:
+
 - `useMessages` subscribes to `messages:${sessionId}` channel (INSERT events on `chat_messages`)
 - `useNotifications` subscribes to `notifications-realtime` channel
 - Both update the TanStack Query cache on new events and deduplicate against existing data

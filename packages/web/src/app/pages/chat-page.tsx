@@ -1,10 +1,10 @@
-import { useCurrentSession } from "@/hooks/use-sessions";
+import { useParams } from "react-router-dom";
 import { ChatView } from "@/components/chat-view";
 
 export function ChatPage() {
-  const { currentSession } = useCurrentSession();
+  const { sessionId } = useParams<{ sessionId: string }>();
 
-  if (!currentSession) {
+  if (!sessionId) {
     return (
       <div className="flex h-full items-center justify-center">
         <p className="text-on-surface-variant">
@@ -14,5 +14,5 @@ export function ChatPage() {
     );
   }
 
-  return <ChatView sessionId={currentSession.id} />;
+  return <ChatView sessionId={sessionId} />;
 }

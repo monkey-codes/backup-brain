@@ -41,7 +41,7 @@ vi.mock("@/lib/supabase", () => ({
 }));
 
 import { AuthProvider } from "../hooks/use-auth";
-import { SessionProvider } from "../hooks/use-sessions";
+
 import { AppRoutes } from "../App";
 
 const MOCK_SESSIONS = [
@@ -106,11 +106,9 @@ async function renderChatShell() {
     result = render(
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <SessionProvider>
-            <MemoryRouter initialEntries={["/chat"]}>
-              <AppRoutes />
-            </MemoryRouter>
-          </SessionProvider>
+          <MemoryRouter initialEntries={["/chat"]}>
+            <AppRoutes />
+          </MemoryRouter>
         </AuthProvider>
       </QueryClientProvider>
     );

@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  Outlet,
+  Link,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 import {
   Menu,
   X,
@@ -9,18 +15,13 @@ import {
   LogOut,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import {
-  useSessions,
-  useCreateSession,
-  useCurrentSession,
-} from "@/hooks/use-sessions";
+import { useSessions, useCreateSession } from "@/hooks/use-sessions";
 import { useNotifications, useUnreadCount } from "@/hooks/use-notifications";
 import { Button } from "@/components/ui/button";
 import type { ChatSession } from "@backup-brain/shared";
 
 export function AppLayout() {
   const { user, signOut } = useAuth();
-  const { currentSession, setCurrentSession } = useCurrentSession();
   const { data: sessions, isLoading: sessionsLoading } = useSessions();
   const createSession = useCreateSession();
   const { data: notifications } = useNotifications();
@@ -28,19 +29,20 @@ export function AppLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { sessionId } = useParams<{ sessionId: string }>();
 
   const isChat = location.pathname.startsWith("/chat");
   const isReview = location.pathname === "/review";
 
+  const currentSession = sessions?.find((s) => s.id === sessionId) ?? null;
+
   const handleNewChat = async () => {
     const newSession = await createSession.mutateAsync();
-    setCurrentSession(newSession);
     setDrawerOpen(false);
-    navigate("/chat");
+    navigate(`/chat/${newSession.id}`);
   };
 
   const handleSelectSession = (session: ChatSession) => {
-    setCurrentSession(session);
     setDrawerOpen(false);
     navigate(`/chat/${session.id}`);
   };

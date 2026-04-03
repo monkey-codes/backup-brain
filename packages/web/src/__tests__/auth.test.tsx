@@ -36,7 +36,7 @@ vi.mock("@/lib/supabase", () => ({
 }));
 
 import { AuthProvider } from "../hooks/use-auth";
-import { SessionProvider } from "../hooks/use-sessions";
+
 import { AppRoutes } from "../App";
 
 function setupAuthMock(session: unknown = null) {
@@ -55,11 +55,9 @@ async function renderApp(initialRoute = "/chat") {
     result = render(
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <SessionProvider>
-            <MemoryRouter initialEntries={[initialRoute]}>
-              <AppRoutes />
-            </MemoryRouter>
-          </SessionProvider>
+          <MemoryRouter initialEntries={[initialRoute]}>
+            <AppRoutes />
+          </MemoryRouter>
         </AuthProvider>
       </QueryClientProvider>
     );
@@ -226,11 +224,9 @@ describe("Auth flow", () => {
     render(
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <SessionProvider>
-            <MemoryRouter initialEntries={["/chat"]}>
-              <AppRoutes />
-            </MemoryRouter>
-          </SessionProvider>
+          <MemoryRouter initialEntries={["/chat"]}>
+            <AppRoutes />
+          </MemoryRouter>
         </AuthProvider>
       </QueryClientProvider>
     );
