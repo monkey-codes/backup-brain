@@ -209,6 +209,79 @@ test("update a reminder cross-session — reschedule changes due_at in the datab
   expect(updatedDueAt).not.toBe(originalDueAt);
 });
 
+test("complete a todo cross-session — sets completed_at via value merge", async ({
+  page,
+}) => {
+  const userId = getTestUserId();
+
+  // --- Session A: capture a todo ---
+  await navigateAndStartChat(page);
+
+  const message = "Add a todo to paint the fence";
+  await sendMessage(page, message);
+  await waitForAssistantReply(page);
+
+  // Find the thought with todo content
+  const thoughts = await queryDb<{
+    id: string;
+    content: string;
+    created_by: string;
+  }>("thoughts", { created_by: userId });
+
+  const thought = thoughts.find(
+    (t) => t.content.includes("paint") || t.content.includes("fence")
+  );
+  expect(thought).toBeDefined();
+
+  // Get the todo decision and verify it has completed_at: null
+  const originalDecisions = await queryDb<{
+    id: string;
+    thought_id: string;
+    decision_type: string;
+    value: Record<string, unknown>;
+    review_status: string;
+  }>("thought_decisions", {
+    thought_id: thought!.id,
+    decision_type: "todo",
+  });
+
+  expect(originalDecisions.length).toBeGreaterThanOrEqual(1);
+  expect(originalDecisions[0].value.completed_at).toBeNull();
+  const decisionId = originalDecisions[0].id;
+  const originalReviewStatus = originalDecisions[0].review_status;
+
+  // --- Session B: complete the todo (no prior chat context) ---
+  await createNewSession(page);
+
+  const completionMessage = "I painted the fence";
+  await sendMessage(page, completionMessage);
+  await waitForAssistantReply(page);
+
+  // Assert: the todo decision's completed_at is now set
+  const updatedDecisions = await queryDb<{
+    id: string;
+    decision_type: string;
+    value: Record<string, unknown>;
+    review_status: string;
+    corrected_value: Record<string, unknown> | null;
+  }>("thought_decisions", {
+    id: decisionId,
+  });
+
+  expect(updatedDecisions.length).toBe(1);
+  const updatedValue = updatedDecisions[0].value;
+  expect(updatedValue.completed_at).toBeDefined();
+  expect(updatedValue.completed_at).not.toBeNull();
+  // completed_at should be a parseable date
+  expect(new Date(updatedValue.completed_at as string).toString()).not.toBe(
+    "Invalid Date"
+  );
+  // description should still be present (shallow merge preserves it)
+  expect(updatedValue.description).toBeDefined();
+  // review_status should NOT change — completion is not a correction
+  expect(updatedDecisions[0].review_status).toBe(originalReviewStatus);
+});
+
 test("correct a decision cross-session — sets review_status and corrected_value", async ({
   page,
 }) => {
