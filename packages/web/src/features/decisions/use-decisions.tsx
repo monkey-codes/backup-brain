@@ -30,7 +30,15 @@ export function useDecisions(filter: DecisionFilter) {
         ascending: false,
       });
       if (error) throw error;
-      return data as DecisionWithThought[];
+      let results = data as DecisionWithThought[];
+      if (filter === "needs_review") {
+        results = results.filter(
+          (d) =>
+            d.decision_type !== "todo" ||
+            !(d.value as { completed_at: string | null }).completed_at
+        );
+      }
+      return results;
     },
   });
 }

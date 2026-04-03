@@ -21,6 +21,8 @@ function formatValue(type: DecisionType, value: DecisionValue): string {
       return (value as { description: string }).description;
     case "tag":
       return (value as { label: string }).label;
+    case "todo":
+      return (value as { description: string }).description;
     default:
       return JSON.stringify(value);
   }
@@ -83,6 +85,8 @@ function extractFormFields(
       return { description: v.description, due_at: v.due_at };
     case "tag":
       return { label: v.label };
+    case "todo":
+      return { description: v.description };
     default:
       return {};
   }

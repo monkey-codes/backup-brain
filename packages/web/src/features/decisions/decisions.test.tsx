@@ -35,8 +35,9 @@ vi.mock("@/shared/lib/supabase", () => ({
 
 import { DecisionReviewView } from "./decision-review";
 import { AuthProvider } from "../auth/use-auth";
+import type { DecisionWithThought } from "./use-decisions";
 
-const MOCK_DECISIONS = [
+const MOCK_DECISIONS: DecisionWithThought[] = [
   {
     id: "dec-1",
     thought_id: "thought-1",
@@ -333,5 +334,125 @@ describe("DecisionReviewView", () => {
       expect(screen.getByTestId("empty-state")).toBeInTheDocument();
     });
     expect(screen.getByText("No decisions need review")).toBeInTheDocument();
+  });
+
+  describe("todo decisions", () => {
+    const TODO_DECISION: DecisionWithThought = {
+      id: "dec-todo-1",
+      thought_id: "thought-todo-1",
+      decision_type: "todo",
+      value: { description: "Paint the fence", completed_at: null },
+      confidence: 0.9,
+      reasoning: "User explicitly asked to add a todo",
+      review_status: "pending",
+      corrected_value: null,
+      corrected_by: null,
+      corrected_at: null,
+      created_at: "2026-03-26T11:00:00Z",
+      thought: {
+        id: "thought-todo-1",
+        content: "Add a todo to paint the fence",
+      },
+    };
+
+    const COMPLETED_TODO_DECISION: DecisionWithThought = {
+      ...TODO_DECISION,
+      id: "dec-todo-2",
+      thought_id: "thought-todo-2",
+      value: {
+        description: "Fix the gate",
+        completed_at: "2026-03-27T10:00:00Z",
+      },
+      review_status: "pending",
+      thought: {
+        id: "thought-todo-2",
+        content: "I need to fix the gate",
+      },
+    };
+
+    it("renders todo description in decision card via formatValue", async () => {
+      setupSupabaseMock([TODO_DECISION]);
+      await renderReview();
+
+      await waitFor(() => {
+        expect(screen.getByTestId("decision-card")).toBeInTheDocument();
+      });
+
+      // The description should be displayed as the formatted value
+      expect(screen.getByText("Paint the fence")).toBeInTheDocument();
+      // The type badge should show "todo"
+      expect(screen.getByText("todo")).toBeInTheDocument();
+    });
+
+    it("exposes description field in correction form via extractFormFields", async () => {
+      setupSupabaseMock([TODO_DECISION]);
+      const user = userEvent.setup();
+      await renderReview();
+
+      await waitFor(() => {
+        expect(screen.getByTestId("correct-button")).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId("correct-button"));
+
+      const form = screen.getByTestId("correction-form");
+      expect(form).toBeInTheDocument();
+
+      // Should have a description input pre-filled with the current value
+      const descInput = screen.getByTestId("correction-input-description");
+      expect(descInput).toBeInTheDocument();
+      expect(descInput).toHaveValue("Paint the fence");
+    });
+
+    it("submits corrected todo description", async () => {
+      setupSupabaseMock([TODO_DECISION]);
+      mockSingle.mockResolvedValue({
+        data: {
+          ...TODO_DECISION,
+          review_status: "corrected",
+          corrected_value: { description: "Paint the back fence" },
+        },
+        error: null,
+      });
+      mockEq.mockReturnValue({ select: () => ({ single: mockSingle }) });
+      mockUpdate.mockReturnValue({ eq: mockEq });
+
+      const user = userEvent.setup();
+      await renderReview();
+
+      await waitFor(() => {
+        expect(screen.getByTestId("correct-button")).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId("correct-button"));
+
+      const descInput = screen.getByTestId("correction-input-description");
+      await user.clear(descInput);
+      await user.type(descInput, "Paint the back fence");
+
+      await user.click(screen.getByTestId("correction-submit"));
+
+      expect(mockUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          review_status: "corrected",
+          corrected_value: { description: "Paint the back fence" },
+          corrected_by: "user-1",
+        })
+      );
+    });
+
+    it("excludes completed todos from needs_review filter", async () => {
+      // Both a pending incomplete todo and a pending completed todo
+      setupSupabaseMock([TODO_DECISION, COMPLETED_TODO_DECISION]);
+      await renderReview();
+
+      await waitFor(() => {
+        expect(screen.getAllByTestId("decision-card")).toHaveLength(1);
+      });
+
+      // Only the incomplete todo should be shown
+      expect(screen.getByText("Paint the fence")).toBeInTheDocument();
+      expect(screen.queryByText("Fix the gate")).not.toBeInTheDocument();
+    });
   });
 });
