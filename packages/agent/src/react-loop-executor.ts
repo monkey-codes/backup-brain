@@ -54,7 +54,13 @@ function rewriteToolsForLLM(tools: ToolDefinition[]): ToolDefinition[] {
                 properties: {
                   decision_type: {
                     type: "string",
-                    enum: ["classification", "entity", "reminder", "tag"],
+                    enum: [
+                      "classification",
+                      "entity",
+                      "reminder",
+                      "tag",
+                      "todo",
+                    ],
                   },
                   value: {
                     type: "object",
@@ -62,7 +68,8 @@ function rewriteToolsForLLM(tools: ToolDefinition[]): ToolDefinition[] {
                       'Decision payload. For classification: {"category": "..."}, ' +
                       'for entity: {"name": "...", "type": "..."}, ' +
                       'for reminder: {"due_at": "ISO date", "description": "..."}, ' +
-                      'for tag: {"label": "..."}',
+                      'for tag: {"label": "..."}, ' +
+                      'for todo: {"description": "...", "completed_at": null}',
                   },
                   confidence: { type: "number", description: "0-1" },
                   reasoning: { type: "string" },
