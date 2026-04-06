@@ -8,6 +8,7 @@ import { LoginView } from "@/features/auth/login";
 import { ChatPage } from "@/app/pages/chat-page";
 import { ReviewPage } from "@/app/pages/review-page";
 import { NotificationsPage } from "@/app/pages/notifications-page";
+import { RemindersPage } from "@/app/pages/reminders-page";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ export function AppRoutes() {
         <Route path="/chat/:sessionId" element={<ChatPage />} />
         <Route path="/review" element={<ReviewPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/reminders" element={<RemindersPage />} />
       </Route>
 
       {/* Redirects */}
