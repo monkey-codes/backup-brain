@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "devDependencies": {
-    "@playwright/test": "^1.52.0",
+    "@playwright/test": "^1.59.1",
     "@supabase/supabase-js": "^2.101.1"
   }
 }
