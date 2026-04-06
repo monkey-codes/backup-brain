@@ -13,12 +13,19 @@ All commands use [go-task](https://taskfile.dev) (`task`). Binary versions manag
 ```bash
 task install              # pnpm install
 task dev                  # Start all dev servers (web + agent + edge functions)
+task dev:stop             # Kill all dev servers
 task typecheck            # Type-check all packages
+task lint                 # Lint all packages
+task test                 # Run all tests (agent + web + mcp)
 task test:agent           # Run agent tests (vitest)
 task test:web             # Run web tests (vitest)
 task test:mcp             # MCP integration tests (deno test, requires db:start + dev:functions)
+task test:integration     # End-to-end tests (Playwright, orchestrates full stack)
+task env                  # Write .env from local Supabase status
 task db:start             # Start local Supabase (Postgres, Auth, Realtime, Studio)
+task db:stop              # Stop local Supabase
 task db:reset             # Reset database (reapply all migrations)
+task db:dashboard         # Open Supabase Studio in browser
 task db:migration -- name # Create new migration file
 ```
 
@@ -56,7 +63,7 @@ Web App ←→ Supabase (DB + Realtime) ←→ Agent Process
 
 ### Database
 
-PostgreSQL 17 with pgvector extension. Schema in `supabase/migrations/`. Key tables: `chat_sessions`, `chat_messages`, `thoughts` (with 1536-dim embeddings), `thought_decisions`, `thought_groups`, `notifications`. RLS enabled. Similarity search via `match_thoughts()` PL/pgSQL function.
+PostgreSQL 17 with pgvector extension. Schema in `supabase/migrations/`. Key tables: `chat_sessions`, `chat_messages`, `thoughts` (with 1536-dim embeddings), `thought_decisions` (5 types: classification, entity, reminder, tag, todo), `thought_groups`, `notifications`, `agent_state`. RLS enabled. Similarity search via `match_thoughts()` PL/pgSQL function.
 
 ### Environment Variables
 

@@ -14,7 +14,7 @@ A personal AI memory system where humans capture thoughts through a web app, and
 └──────┬───────┘                  └──┬───────┬───┘
        │ Supabase JS SDK             │       │
        │ (write messages,            │       │ MCP Client
-       │  subscribe to responses,    │       │ (@modelcontextprotocol/sdk)
+       │  subscribe to responses,    │       │ (Custom JSON-RPC)
        │  correct decisions)         │       │
        │                             │       │
        │    ┌───────────────┐        │       │
@@ -83,19 +83,19 @@ No `metadata` JSONB column. All structured data lives in `thought_decisions`.
 
 Every decision the agent makes, stored explicitly. One row per decision — a thought with three entities gets three separate decision rows, each with its own ID, confidence, and correction status.
 
-| Column            | Type             | Purpose                                       |
-| ----------------- | ---------------- | --------------------------------------------- |
-| `id`              | uuid             | PK                                            |
-| `thought_id`      | FK to thoughts   | Many decisions per thought                    |
-| `decision_type`   | text             | `classification`, `entity`, `reminder`, `tag` |
-| `value`           | jsonb            | Decision payload (see shapes below)           |
-| `confidence`      | float            | 0.0–1.0                                       |
-| `reasoning`       | text             | One sentence explaining why                   |
-| `review_status`   | text             | `pending`, `accepted`, `corrected`            |
-| `corrected_value` | jsonb            | Null until user overrides                     |
-| `corrected_by`    | FK to auth.users |                                               |
-| `corrected_at`    | timestamptz      |                                               |
-| `created_at`      | timestamptz      |                                               |
+| Column            | Type             | Purpose                                               |
+| ----------------- | ---------------- | ----------------------------------------------------- |
+| `id`              | uuid             | PK                                                    |
+| `thought_id`      | FK to thoughts   | Many decisions per thought                            |
+| `decision_type`   | text             | `classification`, `entity`, `reminder`, `tag`, `todo` |
+| `value`           | jsonb            | Decision payload (see shapes below)                   |
+| `confidence`      | float            | 0.0–1.0                                               |
+| `reasoning`       | text             | One sentence explaining why                           |
+| `review_status`   | text             | `pending`, `accepted`, `corrected`                    |
+| `corrected_value` | jsonb            | Null until user overrides                             |
+| `corrected_by`    | FK to auth.users |                                                       |
+| `corrected_at`    | timestamptz      |                                                       |
+| `created_at`      | timestamptz      |                                                       |
 
 Corrections are preserved alongside original decisions for the agent to learn from.
 
@@ -113,6 +113,9 @@ Corrections are preserved alongside original decisions for the agent to learn fr
 
 // tag — one decision per tag
 { "label": "urgent" }
+
+// todo — one per action item
+{ "description": "Call the plumber", "completed_at": null }
 ```
 
 **Categories** are freeform strings, not a fixed enum. The agent is instructed to prefer a seed list of common categories but can create new ones when nothing fits. The proactive reviewer consolidates duplicates over time.
@@ -163,6 +166,16 @@ Agent writes here, app reads here.
 `read_at` and `dismissed_at` are both kept — a notification can be seen but still in the list until explicitly cleared. Badge shows count where `read_at IS NULL`. List shows everything where `dismissed_at IS NULL`.
 
 > **Future enhancement:** Add external delivery channels (email, Slack webhook, Telegram bot) for time-sensitive reminders that need to reach users when the app isn't open. The `delivered_via` column supports this without schema changes.
+
+### `agent_state`
+
+Key-value store for agent process state. Used by the proactive reviewer to track its last run time.
+
+| Column       | Type        | Purpose                 |
+| ------------ | ----------- | ----------------------- |
+| `key`        | text        | PK                      |
+| `value`      | jsonb       | Arbitrary state payload |
+| `updated_at` | timestamptz |                         |
 
 ### `chat_sessions`
 
@@ -350,11 +363,10 @@ Creates `notification` rows (type = `reminder`, `decision_id` linked) for each m
 
 Two-pass approach to avoid sending all thoughts to the LLM:
 
-**Pass 1 — SQL candidate selection:**
+**Pass 1 — SQL candidate selection** (capped at 50 thoughts):
 
-- Low-confidence decisions: `WHERE confidence < 0.7 AND review_status = 'pending'`
-- Ungrouped thoughts: `WHERE id NOT IN (SELECT thought_id FROM thought_group_members)`
-- Recent corrections: `WHERE review_status = 'corrected' AND created_at > last_run`
+- Low-confidence decisions: `WHERE confidence < 0.7 AND review_status = 'pending'` (ordered by confidence ascending)
+- Corrected decisions: `WHERE review_status = 'corrected'` (fills remaining capacity, ordered by corrected_at descending)
 
 **Pass 2 — LLM processing** of candidates only:
 
@@ -419,13 +431,14 @@ OpenAI first (gpt-4o for reasoning, gpt-4o-mini as an option for cheaper calls l
 | **Chat**            | Main interface — session list sidebar + message area. Session created on "New Chat" click. |
 | **Notifications**   | List of reminders, suggestions, insights. Badge for unread.                                |
 | **Decision Review** | Browse decisions, filter by low confidence/pending, accept or correct                      |
+| **Reminders**       | Calendar month grid with reminder indicators, day detail view, month navigation            |
 
 ## Project Structure
 
 Monorepo with pnpm workspaces. Shared TypeScript types between web app and agent.
 
 ```
-open-brain/
+backup-brain/
 ├── packages/
 │   ├── web/          # Vite + React + TypeScript app
 │   ├── agent/        # Node.js + TypeScript agent process
@@ -437,7 +450,7 @@ open-brain/
 └── tsconfig.base.json
 ```
 
-The `shared` package contains database-facing types used by both web app and agent: `ChatSession`, `ChatMessage`, `Thought`, `ThoughtDecision`, `DecisionType`, `ThoughtGroup`, `Notification`. The `LLMProvider` interface lives in the `agent` package — only the agent calls LLMs.
+The `shared` package contains database-facing types used by both web app and agent: `ChatSession`, `ChatMessage`, `Thought`, `ThoughtDecision`, `DecisionType`, `DecisionValue`, `ReviewStatus`, `ThoughtGroup`, `ThoughtGroupMember`, `Notification`, `NotificationType`, `AgentState`. The `LLMProvider` interface lives in the `agent` package — only the agent calls LLMs.
 
 ## Deployment
 
