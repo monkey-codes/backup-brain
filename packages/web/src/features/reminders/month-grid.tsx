@@ -76,15 +76,15 @@ export function MonthGrid({
             {count === 1 && (
               <span
                 data-testid="reminder-dot"
-                className="h-1.5 w-1.5 rounded-full bg-primary"
+                className="h-2 w-2 rounded-full bg-primary"
               />
             )}
             {count > 1 && (
               <span
                 data-testid="reminder-count"
-                className="text-xs font-medium text-primary"
+                className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium leading-none text-on-primary"
               >
-                {count}
+                {count > 9 ? "9+" : count}
               </span>
             )}
           </button>

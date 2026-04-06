@@ -96,11 +96,11 @@ describe("useReminders", () => {
     expect(mockEq).toHaveBeenCalledWith("decision_type", "reminder");
     // April 2026: gte start of month, lt start of next month
     expect(mockGte).toHaveBeenCalledWith(
-      "value->due_at",
+      "value->>due_at",
       "2026-04-01T00:00:00.000Z"
     );
     expect(mockLt).toHaveBeenCalledWith(
-      "value->due_at",
+      "value->>due_at",
       "2026-05-01T00:00:00.000Z"
     );
   });
