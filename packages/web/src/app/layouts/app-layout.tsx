@@ -12,6 +12,7 @@ import {
   Bell,
   MessageCircle,
   ClipboardCheck,
+  Calendar,
   LogOut,
 } from "lucide-react";
 import { useAuth } from "@/features/auth/use-auth";
@@ -36,6 +37,7 @@ export function AppLayout() {
 
   const isChat = location.pathname.startsWith("/chat");
   const isReview = location.pathname === "/review";
+  const isReminders = location.pathname === "/reminders";
 
   const currentSession = sessions?.find((s) => s.id === sessionId) ?? null;
 
@@ -244,6 +246,18 @@ export function AppLayout() {
         >
           <ClipboardCheck className="h-5 w-5" />
           <span className="text-xs font-medium">Review</span>
+        </Link>
+        <Link
+          to="/reminders"
+          data-testid="nav-reminders"
+          className={`flex flex-col items-center gap-0.5 px-6 py-1 rounded-lg transition-colors ${
+            isReminders
+              ? "bg-primary/15 text-primary"
+              : "text-on-surface-variant"
+          }`}
+        >
+          <Calendar className="h-5 w-5" />
+          <span className="text-xs font-medium">Calendar</span>
         </Link>
       </nav>
     </div>

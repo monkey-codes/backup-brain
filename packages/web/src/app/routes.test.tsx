@@ -133,6 +133,17 @@ describe("Route configuration", () => {
     });
   });
 
+  it("unauthenticated access to /reminders redirects to /login", async () => {
+    setupAuthMock(null);
+    await renderApp("/reminders");
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Secure your digital consciousness.")
+      ).toBeInTheDocument();
+    });
+  });
+
   it("/login renders minimal layout without app shell", async () => {
     setupAuthMock(null);
     await renderApp("/login");
@@ -204,6 +215,24 @@ describe("Route navigation", () => {
     });
   });
 
+  it("clicking Calendar bottom nav tab navigates to /reminders", async () => {
+    setupAuthMock(AUTHED_SESSION);
+    const user = userEvent.setup();
+    await renderApp("/chat");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("nav-reminders")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId("nav-reminders"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("nav-reminders").className).toContain(
+        "text-primary"
+      );
+    });
+  });
+
   it("bottom nav highlights correct tab based on URL", async () => {
     setupAuthMock(AUTHED_SESSION);
     await renderApp("/review");
@@ -216,6 +245,25 @@ describe("Route navigation", () => {
       "text-primary"
     );
     expect(screen.getByTestId("nav-chat").className).not.toContain(
+      "text-primary"
+    );
+  });
+
+  it("Calendar tab shows active styling on /reminders", async () => {
+    setupAuthMock(AUTHED_SESSION);
+    await renderApp("/reminders");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("nav-reminders")).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId("nav-reminders").className).toContain(
+      "text-primary"
+    );
+    expect(screen.getByTestId("nav-chat").className).not.toContain(
+      "text-primary"
+    );
+    expect(screen.getByTestId("nav-review").className).not.toContain(
       "text-primary"
     );
   });
