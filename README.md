@@ -59,13 +59,13 @@ The system is a **pnpm monorepo** with three packages plus Supabase infrastructu
 
 ### Key Design Decisions
 
-| Decision | Rationale |
-|----------|-----------|
-| Supabase as shared bus | Full decoupling between web and agent; works identically in local dev and cloud |
-| Thoughts are synthesized, not raw | Agent-distilled units are more searchable and meaningful than raw chat messages |
-| Decisions are first-class entities | Each classification, entity, reminder, and tag is stored with confidence, reasoning, and correction history |
-| Auto-settle everything | Zero friction by default; review is optional for users who want control |
-| Sequential per session, concurrent across | Prevents interleaving within a conversation while maximizing throughput |
+| Decision                                  | Rationale                                                                                                         |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Supabase as shared bus                    | Full decoupling between web and agent; works identically in local dev and cloud                                   |
+| Thoughts are synthesized, not raw         | Agent-distilled units are more searchable and meaningful than raw chat messages                                   |
+| Decisions are first-class entities        | Each classification, entity, reminder, tag, and todo is stored with confidence, reasoning, and correction history |
+| Auto-settle everything                    | Zero friction by default; review is optional for users who want control                                           |
+| Sequential per session, concurrent across | Prevents interleaving within a conversation while maximizing throughput                                           |
 
 ## Getting Started
 
@@ -95,7 +95,7 @@ task env
 task db:reset
 ```
 
-Add your OpenAI API key to `packages/agent/.env`:
+Add your OpenAI API key to `.env` at the monorepo root:
 
 ```
 OPENAI_API_KEY=sk-...
@@ -108,12 +108,12 @@ OPENAI_API_KEY=sk-...
 task dev
 ```
 
-| Service | URL |
-|---------|-----|
-| Web App | http://localhost:5173 |
-| Supabase Studio | http://localhost:54323 |
-| Agent Health | http://localhost:3001 |
-| MCP Server | http://localhost:54321/functions/v1/mcp |
+| Service         | URL                                     |
+| --------------- | --------------------------------------- |
+| Web App         | http://localhost:5173                   |
+| Supabase Studio | http://localhost:54323                  |
+| Agent Health    | http://localhost:3001                   |
+| MCP Server      | http://localhost:54321/functions/v1/mcp |
 
 ## Usage
 
@@ -122,6 +122,7 @@ Once running, open the web app and sign in. Start a conversation and tell it any
 > "We need to replace the roof before winter. Got a quote from ABC Roofing for $12k."
 
 The agent will:
+
 - Capture a thought about the roof replacement
 - Classify it under a category (e.g., Home Maintenance)
 - Extract entities (ABC Roofing)
@@ -139,12 +140,17 @@ The agent searches by meaning and retrieves the relevant thought, even if you do
 ```bash
 task install              # Install dependencies
 task dev                  # Start all dev servers
+task dev:stop             # Kill all dev servers
 task typecheck            # Type-check all packages
+task lint                 # Lint all packages
 task test                 # Run all tests
 task test:agent           # Agent tests (Vitest)
 task test:web             # Web tests (Vitest)
 task test:mcp             # MCP integration tests (Deno)
+task test:integration     # End-to-end tests (Playwright)
+task env                  # Write .env from local Supabase status
 task db:start             # Start local Supabase
+task db:stop              # Stop local Supabase
 task db:reset             # Reset database
 task db:dashboard         # Open Supabase Studio
 ```
@@ -157,32 +163,32 @@ pnpm -C packages/agent exec vitest run src/some-file.test.ts
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| **Frontend** | React 19, Vite 8, Tailwind CSS 4, React Router 7, TanStack Query |
-| **Agent** | Node.js 22, OpenAI SDK (gpt-4o), node-cron |
-| **MCP Server** | Deno 2, Hono, Zod, Supabase Edge Functions |
-| **Database** | PostgreSQL 17, pgvector (1536-dim embeddings), Supabase Realtime |
-| **Embeddings** | OpenAI text-embedding-3-small |
-| **Infra** | AWS (S3 + CloudFront for web, App Runner for agent), Supabase Cloud |
-| **Dev Tools** | pnpm 10, mise, go-task, Vitest, Prettier, Husky, GitHub Actions |
+| Layer          | Technology                                                          |
+| -------------- | ------------------------------------------------------------------- |
+| **Frontend**   | React 19, Vite 8, Tailwind CSS 4, React Router 7, TanStack Query    |
+| **Agent**      | Node.js 22, OpenAI SDK (gpt-4o), node-cron                          |
+| **MCP Server** | Deno 2, Hono, Zod, Supabase Edge Functions                          |
+| **Database**   | PostgreSQL 17, pgvector (1536-dim embeddings), Supabase Realtime    |
+| **Embeddings** | OpenAI text-embedding-3-small                                       |
+| **Infra**      | AWS (S3 + CloudFront for web, App Runner for agent), Supabase Cloud |
+| **Dev Tools**  | pnpm 10, mise, go-task, Vitest, Prettier, Husky, GitHub Actions     |
 
 ### MCP Tools
 
 The MCP server exposes 10 tools via JSON-RPC:
 
-| Tool | Purpose |
-|------|---------|
-| `capture_thought` | Create a thought with decisions atomically |
-| `update_thought` | Modify thought content and re-embed |
-| `search_thoughts` | Semantic similarity search |
-| `list_thoughts` | Browse/filter thoughts |
-| `create_decision` | Add a decision to a thought |
-| `update_decision` | Accept, correct, or patch a decision |
-| `list_decisions` | Query decisions with filters |
-| `create_group` | Create a thought group |
-| `create_notification` | Surface a reminder/suggestion/insight |
-| `set_session_title` | Set chat session title |
+| Tool                  | Purpose                                    |
+| --------------------- | ------------------------------------------ |
+| `capture_thought`     | Create a thought with decisions atomically |
+| `update_thought`      | Modify thought content and re-embed        |
+| `search_thoughts`     | Semantic similarity search                 |
+| `list_thoughts`       | Browse/filter thoughts                     |
+| `create_decision`     | Add a decision to a thought                |
+| `update_decision`     | Accept, correct, or patch a decision       |
+| `list_decisions`      | Query decisions with filters               |
+| `create_group`        | Create a thought group                     |
+| `create_notification` | Surface a reminder/suggestion/insight      |
+| `set_session_title`   | Set chat session title                     |
 
 ## Project Structure
 
@@ -191,10 +197,9 @@ backup-brain/
 ├── packages/
 │   ├── web/                # React + Vite frontend
 │   │   └── src/
-│   │       ├── views/      # Login, chat, decision review, notifications
-│   │       ├── components/ # Chat view, session list, UI primitives
-│   │       ├── hooks/      # Auth, sessions, queries
-│   │       └── lib/        # Supabase client, utilities
+│   │       ├── app/        # App shell, routes, layouts, page wrappers
+│   │       ├── features/   # auth, chat, decisions, notifications, reminders
+│   │       └── shared/     # Reusable UI primitives, Supabase client, utilities
 │   ├── agent/              # Node.js agent process
 │   │   └── src/
 │   │       ├── index.ts              # Entry point
@@ -217,33 +222,34 @@ backup-brain/
 
 ### Agent
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `SUPABASE_URL` | Yes | Supabase project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Service role key (bypasses RLS) |
-| `OPENAI_API_KEY` | Yes | OpenAI API key |
-| `MCP_URL` | No | MCP server URL (default: local) |
-| `HEALTH_PORT` | No | Health check port (default: 3001) |
+| Variable                    | Required | Description                       |
+| --------------------------- | -------- | --------------------------------- |
+| `SUPABASE_URL`              | Yes      | Supabase project URL              |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes      | Service role key (bypasses RLS)   |
+| `OPENAI_API_KEY`            | Yes      | OpenAI API key                    |
+| `MCP_URL`                   | No       | MCP server URL (default: local)   |
+| `HEALTH_PORT`               | No       | Health check port (default: 3001) |
 
 ### Web
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `VITE_SUPABASE_URL` | Yes | Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | Yes | Supabase anonymous key |
+| Variable                 | Required | Description            |
+| ------------------------ | -------- | ---------------------- |
+| `VITE_SUPABASE_URL`      | Yes      | Supabase project URL   |
+| `VITE_SUPABASE_ANON_KEY` | Yes      | Supabase anonymous key |
 
 ## Database
 
 PostgreSQL 17 with the **pgvector** extension for semantic search. Key tables:
 
-| Table | Purpose |
-|-------|---------|
-| `chat_sessions` | Conversation sessions |
-| `chat_messages` | Messages (user and assistant) |
-| `thoughts` | Agent-synthesized memories with 1536-dim vector embeddings |
-| `thought_decisions` | Classifications, entities, reminders, tags with confidence scores |
-| `thought_groups` | Clusters of related thoughts |
-| `notifications` | Reminders, suggestions, and insights |
+| Table               | Purpose                                                                  |
+| ------------------- | ------------------------------------------------------------------------ |
+| `chat_sessions`     | Conversation sessions                                                    |
+| `chat_messages`     | Messages (user and assistant)                                            |
+| `thoughts`          | Agent-synthesized memories with 1536-dim vector embeddings               |
+| `thought_decisions` | Classifications, entities, reminders, tags, todos with confidence scores |
+| `thought_groups`    | Clusters of related thoughts                                             |
+| `notifications`     | Reminders, suggestions, and insights                                     |
+| `agent_state`       | Key-value store for agent process state                                  |
 
 Similarity search is powered by the `match_thoughts()` PL/pgSQL function using cosine distance.
 

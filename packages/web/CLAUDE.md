@@ -21,7 +21,7 @@ From monorepo root: `task test:web`
 Layout routes in `App.tsx`:
 
 - **Auth layout** (minimal, no shell): `/login` -> `LoginView`
-- **App layout** (full shell, protected): `/chat`, `/chat/:sessionId`, `/review`, `/notifications`
+- **App layout** (full shell, protected): `/chat`, `/chat/:sessionId`, `/review`, `/notifications`, `/reminders`
 - `/` and `*` redirect to `/chat`
 
 `ProtectedRoute` checks `useAuth()` and redirects unauthenticated users to `/login`.
