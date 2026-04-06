@@ -29,8 +29,8 @@ export function useReminders(year: number, month: number) {
         .from("thought_decisions")
         .select("*")
         .eq("decision_type", "reminder")
-        .gte("value->due_at", start.toISOString())
-        .lt("value->due_at", end.toISOString());
+        .gte("value->>due_at", start.toISOString())
+        .lt("value->>due_at", end.toISOString());
 
       if (error) throw error;
 
